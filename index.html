@@ -8436,16 +8436,30 @@ if(!FIREBASE_ENABLED){ listenGlobalChat(); }
    görünür olsun diye burada bir kez render edilir. */
 renderAIChatWidget();
 document.addEventListener('click', function(e){
-  if(e.target.closest('.catmenu-overlay')) return;
-  if(e.target.closest('.icon-btn') || e.target.closest('[style*="position:absolute"]')) return;
+  // NOT: e.target.closest(...) yerine e.composedPath() kullanılıyor.
+  // Sebep: fab butonlarına tıklandığında onclick handler'ı (toggleGlobalChat/
+  // toggleAIChat) senkron olarak butonun içeriğini (ikon/badge) yeniden
+  // oluşturuyor. Tıklama tam o ikonun/badge'in üzerine denk gelmişse, e.target
+  // bu satırlar çalışırken artık DOM'dan kopmuş oluyor ve e.target.closest(...)
+  // parentElement zincirini takip edemediği için yanlışlıkla null dönüyor —
+  // bu da "dışarı tıklandı" sanılıp panelin az önce açıldığı gibi hemen
+  // kapatılmasına yol açıyordu (tıklamanın ikona mı yoksa butonun boş kenarına
+  // mı denk geldiğine göre değişen, rastgele görünen bir davranıştı).
+  // composedPath() olayın DISPATCH ANINDAKİ (mutasyon öncesi) orijinal yolunu
+  // döndürdüğü için elementler sonradan koparılsa bile doğru sonuç verir.
+  const path = e.composedPath ? e.composedPath() : [e.target];
+  const pathHas = (cls) => path.some(el => el && el.classList && el.classList.contains(cls));
+
+  if(pathHas('catmenu-overlay')) return;
+  if(pathHas('icon-btn') || path.some(el=> el && el.style && el.style.position==='absolute')) return;
   if(state.panelsOpen.notif || state.panelsOpen.userMenu || state.panelsOpen.catMenu){
     state.panelsOpen.notif=false; state.panelsOpen.userMenu=false; state.panelsOpen.catMenu=false;
     renderHeaderOnly(); renderCatMenuRoot();
   }
-  if(state.gchat && state.gchat.open && !e.target.closest('.gchat-panel') && !e.target.closest('.gchat-fab')){
+  if(state.gchat && state.gchat.open && !pathHas('gchat-panel') && !pathHas('gchat-fab')){
     closeGlobalChat();
   }
-  if(state.aichat && state.aichat.open && !e.target.closest('.aichat-panel') && !e.target.closest('.aichat-fab')){
+  if(state.aichat && state.aichat.open && !pathHas('aichat-panel') && !pathHas('aichat-fab')){
     closeAIChat();
   }
 });
