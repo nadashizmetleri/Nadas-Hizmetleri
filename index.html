@@ -956,6 +956,79 @@ select.sortsel{background:var(--panel);border:1px solid var(--border);border-rad
   .gchat-head{padding-top:calc(14px + env(safe-area-inset-top));}
   .gchat-compose{padding-bottom:calc(12px + env(safe-area-inset-bottom));}
 }
+
+/* ================= AI ASİSTAN — FAB + YAN PANEL ================= */
+/* Global Sohbet FAB'ının HEMEN ÜSTÜNDE duran, kişiye özel yapay zekâ
+   asistanı. Sadece geçerli kullanıcıyla konuşur (global sohbetten farklı
+   olarak kimseyle paylaşılmaz), giriş şartı aranmaz. Gerçek cevaplar,
+   API anahtarını asla görmeyen istemciden, Firebase Cloud Function
+   üzerinden Anthropic API'sine güvenli şekilde proxy'lenir (bkz. render()
+   altındaki renderAIChatWidget() ve /functions/index.js). */
+.aichat-fab{
+  position:fixed;right:18px;
+  bottom:calc(150px + env(safe-area-inset-bottom));
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,var(--green),var(--blue));
+  color:#04101f;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 30px -6px rgba(31,207,110,.45),0 6px 18px -4px var(--blue-glow);
+  z-index:191;transition:transform .15s ease;
+}
+.aichat-fab:hover{transform:scale(1.06);}
+.aichat-fab:active{transform:scale(.96);}
+@media(min-width:860px){.aichat-fab{bottom:88px;}}
+.aichat-panel{
+  position:fixed;right:18px;
+  bottom:calc(212px + env(safe-area-inset-bottom));
+  width:368px;max-width:calc(100vw - 36px);height:min(560px,70vh);
+  background:var(--panel);border:1px solid var(--border);border-radius:18px;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.7);
+  display:flex;flex-direction:column;overflow:hidden;z-index:191;
+  opacity:0;transform:translateY(16px) scale(.98);pointer-events:none;
+  transition:opacity .18s ease,transform .18s ease;
+}
+.aichat-panel.is-open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+@media(min-width:860px){.aichat-panel{bottom:150px;}}
+.aichat-head{display:flex;align-items:center;gap:10px;padding:14px;border-bottom:1px solid var(--border-soft);flex-shrink:0;background:var(--panel-2);}
+.aichat-head-ico{width:34px;height:34px;border-radius:10px;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.aichat-head-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3;}
+.aichat-head-txt b{font-family:'Space Grotesk';font-size:13.5px;}
+.aichat-head-txt span{font-size:10.5px;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.aichat-close{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--elevated);border:1px solid var(--border);color:var(--mid);}
+.aichat-close:hover{color:var(--hi);border-color:var(--green);}
+.aichat-thread{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain;}
+.aichat-empty{margin:auto;text-align:center;color:var(--mid);font-size:12px;padding:20px;line-height:1.6;}
+.aichat-empty b{color:var(--hi);display:block;font-size:13px;margin-bottom:4px;font-family:'Space Grotesk';}
+.aichat-suggestions{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;}
+.aichat-suggestion-chip{background:var(--elevated);border:1px solid var(--border);color:var(--mid);font-size:11px;padding:6px 10px;border-radius:999px;transition:.15s;}
+.aichat-suggestion-chip:hover{border-color:var(--green);color:var(--hi);}
+.aichat-msg{display:flex;gap:8px;align-items:flex-end;max-width:100%;}
+.aichat-msg.me{flex-direction:row-reverse;}
+.aichat-avatar{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--green),#59e0a4);color:#04101f;font-weight:700;font-size:10px;font-family:'Space Grotesk';}
+.aichat-bubble{max-width:100%;white-space:pre-wrap;line-height:1.5;}
+.aichat-msg.me .aichat-bubble{margin-left:34px;}
+.aichat-typing{display:flex;gap:4px;align-items:center;padding:2px 2px;}
+.aichat-typing span{width:6px;height:6px;border-radius:50%;background:var(--mid);animation:aichatBlink 1.2s infinite ease-in-out;}
+.aichat-typing span:nth-child(2){animation-delay:.2s;}
+.aichat-typing span:nth-child(3){animation-delay:.4s;}
+@keyframes aichatBlink{0%,80%,100%{opacity:.25;transform:scale(.8);}40%{opacity:1;transform:scale(1);}}
+.aichat-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border-soft);flex-shrink:0;background:var(--panel-2);}
+.aichat-compose input{flex:1;min-width:0;background:var(--elevated);border:1px solid var(--border);border-radius:12px;padding:10px 13px;color:var(--hi);font-size:13px;}
+.aichat-compose input:focus{outline:none;border-color:var(--green);}
+.aichat-compose input:disabled{opacity:.6;}
+.aichat-compose .btn{flex-shrink:0;width:40px;height:40px;padding:0;border-radius:12px;display:flex;align-items:center;justify-content:center;}
+.aichat-compose .btn:disabled{opacity:.5;cursor:default;}
+.aichat-disclaimer{font-size:9.5px;color:var(--low);text-align:center;padding:0 12px 10px;flex-shrink:0;background:var(--panel-2);}
+@media(max-width:859px){
+  .aichat-panel{
+    position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;
+    border-radius:0;border:none;bottom:0;right:0;
+    transform:translateY(100%);opacity:1;z-index:211;
+  }
+  .aichat-panel.is-open{transform:translateY(0);}
+  .aichat-fab.is-open{display:none;}
+  .aichat-head{padding-top:calc(14px + env(safe-area-inset-top));}
+  .aichat-compose{padding-bottom:calc(12px + env(safe-area-inset-bottom));}
+}
 .toggle{width:38px;height:22px;border-radius:999px;background:var(--elevated);border:1px solid var(--border);position:relative;flex-shrink:0;}
 .toggle.on{background:var(--orange);border-color:var(--orange);}
 .toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;}
@@ -1206,11 +1279,13 @@ html,body{touch-action:pan-x pan-y;}
 <div id="catMenuRoot"></div>
 <div id="app"></div>
 <div id="globalChatRoot"></div>
+<div id="aiChatRoot"></div>
 
 <!-- Firebase SDK (compat sürüm — mevcut inline script/onclick yapısıyla uyumlu çalışması için) -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
 
 <script>
 /* =========================================================
@@ -1550,6 +1625,26 @@ html,body{touch-action:pan-x pan-y;}
          allow delete: if isAdmin();
        }
 
+       // YÖNETİCİ GELEN KUTUSU: bir kullanıcı Destek Talebi veya Para Çekme
+       // Talebi gönderdiğinde, admin panelinin anında haberdar olması için
+       // burada tek bir "gelen kutusu" kaydı oluşturulur (bkz. pushAdminNotification).
+       // Herhangi bir imzalı kullanıcı SADECE kendi uid'i "fromUid" olacak,
+       // türü 'support' veya 'withdrawal' olacak ve "read:false" ile
+       // oluşturacak şekilde bir kayıt yazabilir — böylece bir kullanıcı
+       // başka bir kullanıcı adına sahte bildirim oluşturamaz. Okuma ve
+       // "read" alanını güncelleme (okundu/okunmadı takibi) SADECE admin
+       // tarafından yapılabilir.
+       match /adminNotifications/{notifId} {
+         allow read: if isAdmin();
+         allow create: if isSignedIn()
+           && request.resource.data.fromUid == request.auth.uid
+           && request.resource.data.type in ['support','withdrawal']
+           && request.resource.data.read == false;
+         allow update: if isAdmin()
+           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+         allow delete: if isAdmin();
+       }
+
        match /shops/{shopId} {
          allow read: if true;
          allow create: if isAdmin() || isSignedIn();
@@ -1635,7 +1730,7 @@ const firebaseConfig = {
   measurementId: "G-NMLZG6PNXG",
 };
 const FIREBASE_ENABLED = !/BURAYA_/.test(firebaseConfig.apiKey) && !!firebaseConfig.apiKey;
-let fbApp=null, fbAuth=null, fbDb=null;
+let fbApp=null, fbAuth=null, fbDb=null, fbFunctions=null;
 if(FIREBASE_ENABLED){
   try{
     fbApp = firebase.initializeApp(firebaseConfig);
@@ -1648,6 +1743,12 @@ if(FIREBASE_ENABLED){
       console.error('Oturum kalıcılığı ayarlanamadı:', err);
     });
   }catch(err){ console.error('Firebase başlatılamadı:', err); }
+  // AI Asistan için Cloud Functions bağlantısı — ayrı try/catch: Functions
+  // henüz deploy edilmemiş olsa bile Auth/Firestore çalışmaya devam etsin.
+  // Gerçek Anthropic API anahtarı SADECE sunucu tarafındaki Cloud Function
+  // içinde tutulur (bkz. /functions/index.js) — istemci koduna ASLA yazılmaz.
+  try{ fbFunctions = firebase.app().functions('us-central1'); }
+  catch(err){ console.warn('Firebase Functions başlatılamadı (AI Asistan devre dışı kalabilir):', err); }
 }else{
   console.warn('Firebase yapılandırması girilmedi — uygulama yerel demo modunda çalışıyor. firebaseConfig değerlerini doldurun.');
 }
@@ -2248,10 +2349,12 @@ const state = {
   activeMessages: [],
   msgMobileOpen:false,
   gchat:{ open:false, messages:[], unread:0, readCount:0 },
+  aichat:{ open:false, messages:[], loading:false },
   wizard:{step:1,data:{}},
   ticketMessages:[],
   activeTicket:null,
   tickets: FIREBASE_ENABLED ? [] : MOCK_TICKETS.slice(),
+  adminInboxNotifications: [], // admin paneli "Gelen Talep Bildirimleri" — bkz. pushAdminNotification
   announcements: [],
   accountTab:'profil',
   adminTab:'kullanicilar',
@@ -2282,6 +2385,8 @@ function resetPersonalState(){
   detachGlobalChatListener();
   state.gchat = { open:false, messages:[], unread:0, readCount:0 };
   state.tickets = [];
+  state.adminInboxNotifications = [];
+  detachAdminInboxListener();
   state.favorites = new Set();
   state.cart = [];
   state.userPhone = '';
@@ -2322,6 +2427,7 @@ function saveLocalAppState(){
       hasPass: state.hasPass,
       passExpiry: state.passExpiry,
       tickets: state.tickets,
+      adminInboxNotifications: state.adminInboxNotifications,
       paymentRequests: state.paymentRequests,
       withdrawalRequests: state.withdrawalRequests,
       globalTransactions: state.globalTransactions,
@@ -2357,6 +2463,7 @@ function loadLocalAppState(){
     if(typeof d.hasPass==='boolean') state.hasPass = d.hasPass;
     if(d.passExpiry!==undefined) state.passExpiry = d.passExpiry;
     if(Array.isArray(d.tickets)) state.tickets = d.tickets;
+    if(Array.isArray(d.adminInboxNotifications)) state.adminInboxNotifications = d.adminInboxNotifications;
     if(Array.isArray(d.paymentRequests)) state.paymentRequests = d.paymentRequests;
     if(Array.isArray(d.withdrawalRequests)) state.withdrawalRequests = d.withdrawalRequests;
     if(Array.isArray(d.globalTransactions)) state.globalTransactions = d.globalTransactions;
@@ -2609,7 +2716,7 @@ function watchAuthState(){
       listenConversations();
       watchDealTransactions();
       listenGlobalChat();
-      if(state.isAdmin){ loadPaymentRequestsFromFirestore(); loadGlobalTransactionsFromFirestore(); loadSupportTicketsFromFirestore(); loadAnnouncementsForAdmin(); }
+      if(state.isAdmin){ loadPaymentRequestsFromFirestore(); loadGlobalTransactionsFromFirestore(); loadSupportTicketsFromFirestore(); loadAnnouncementsForAdmin(); watchAdminInboxNotifications(); }
       render();
     }else{
       if(_announceUnsub){ _announceUnsub(); _announceUnsub=null; }
@@ -2622,6 +2729,7 @@ function watchAuthState(){
       detachPaymentRequestsListener();
       detachGlobalTransactionsListener();
       detachSupportTicketsListener();
+      detachAdminInboxListener();
       _myDeliveriesByOrder = {};
       resetPersonalState();
       state.uid=null; state.loggedIn=false; state.isAdmin=false; state.userName=''; state.userEmail='';
@@ -3075,6 +3183,103 @@ function openNotificationItem(id){
   else renderHeaderOnly();
 }
 
+/* ================= YÖNETİCİ GELEN KUTUSU =================
+   Bir kullanıcı Destek Talebi (createTicket/submitTicketRequest) veya Para
+   Çekme Talebi (createWithdrawRequest) gönderdiğinde, admin panelinin ANINDA
+   haberdar olması için `adminNotifications` koleksiyonuna bir kayıt yazılır:
+   {type:'support'|'withdrawal', fromUid, fromUserName, message, refId, read,
+   createdAt}. Kişisel `notifications` sisteminden farklı olarak bu koleksiyon
+   tek bir hedef uid'e değil, DOĞRUDAN admin panelinin kendisine aittir — tüm
+   adminler aynı listeyi görür ve okundu/okunmadı durumu paylaşılır (bkz.
+   watchAdminInboxNotifications, Yönetim Paneli > Gelen Talep Bildirimleri
+   sekmesi). Firebase yapılandırılmadığında (yerel demo modu) doğrudan
+   state.adminInboxNotifications'a yazılır ve localStorage ile kalıcı hale
+   getirilir. */
+const ADMIN_INBOX_TYPES = {
+  support:{icon:'ticket', color:'var(--orange)', label:'Destek Talebi'},
+  withdrawal:{icon:'send', color:'var(--green)', label:'Para Çekme Talebi'},
+};
+function adminInboxMeta(type){ return ADMIN_INBOX_TYPES[type] || ADMIN_INBOX_TYPES.support; }
+function adminInboxUnreadCount(){ return (state.adminInboxNotifications||[]).filter(n=>!n.read).length; }
+async function pushAdminNotification(data){
+  const payload = {
+    type: data.type||'support',
+    fromUid: state.uid||'demo-user',
+    fromUserName: state.userName||'Kullanıcı',
+    message: data.message||'',
+    refId: data.refId!=null ? String(data.refId) : null,
+    read:false,
+  };
+  if(FIREBASE_ENABLED && fbDb && state.uid){
+    try{
+      await fbDb.collection('adminNotifications').add(Object.assign({}, payload, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    }catch(err){ console.error('Yönetici bildirimi gönderilemedi:', err); }
+    return;
+  }
+  const n = Object.assign({id:'adm-local-'+Date.now()+'-'+Math.random().toString(36).slice(2), createdAt:Date.now()}, payload);
+  state.adminInboxNotifications = state.adminInboxNotifications||[];
+  state.adminInboxNotifications.unshift(n);
+  state.adminInboxNotifications = state.adminInboxNotifications.slice(0,150);
+  // Yerel demo modunda tek simüle edilmiş kullanıcı olduğundan, o an admin
+  // olarak görüntüleniyorsa anlık toast ile de bilgilendirilir.
+  if(state.isAdmin){ toast(adminInboxMeta(n.type).label+' — '+(n.fromUserName||'')+': '+n.message, 'default'); }
+  renderHeaderOnly();
+  saveLocalAppState();
+}
+let _adminInboxUnsub = null;
+/* Sadece admin oturumunda dinlenir; yeni bir gelen kutusu kaydı oluşur
+   oluşmaz admin panelindeki liste ve rozet CANLI güncellenir. */
+function watchAdminInboxNotifications(){
+  if(!FIREBASE_ENABLED || !fbDb || !state.isAdmin) return;
+  if(_adminInboxUnsub) _adminInboxUnsub();
+  _adminInboxUnsub = fbDb.collection('adminNotifications').orderBy('createdAt','desc').limit(150)
+    .onSnapshot(function(snap){
+      state.adminInboxNotifications = snap.docs.map(function(d){
+        const n = d.data()||{};
+        return {
+          id:d.id, type:n.type||'support', fromUid:n.fromUid||'', fromUserName:n.fromUserName||'Kullanıcı',
+          message:n.message||'', refId:n.refId||null, read:!!n.read,
+          createdAt:(n.createdAt && n.createdAt.toMillis) ? n.createdAt.toMillis() : Date.now(),
+        };
+      });
+      renderHeaderOnly();
+      if(state.view==='admin') render();
+    }, function(err){ console.error('Yönetici bildirimleri dinlenemedi:', err); });
+}
+function detachAdminInboxListener(){ if(_adminInboxUnsub){ _adminInboxUnsub(); _adminInboxUnsub=null; } }
+function markAdminInboxRead(id){
+  const n = (state.adminInboxNotifications||[]).find(x=>String(x.id)===String(id));
+  if(!n || n.read) return;
+  n.read = true;
+  if(FIREBASE_ENABLED && fbDb){
+    fbDb.collection('adminNotifications').doc(String(id)).update({read:true}).catch(function(err){ console.error('Bildirim okundu işaretlenemedi:', err); });
+  }else{
+    saveLocalAppState();
+  }
+}
+function markAllAdminInboxRead(){
+  const unread = (state.adminInboxNotifications||[]).filter(n=>!n.read);
+  if(!unread.length) return;
+  unread.forEach(n=>n.read=true);
+  if(FIREBASE_ENABLED && fbDb){
+    const batch = fbDb.batch();
+    unread.forEach(function(n){ batch.update(fbDb.collection('adminNotifications').doc(String(n.id)), {read:true}); });
+    batch.commit().catch(function(err){ console.error('Bildirimler okundu işaretlenemedi:', err); });
+  }else{
+    saveLocalAppState();
+  }
+  render();
+}
+/* Gelen kutusundaki bir bildirime tıklandığında okundu işaretlenir ve
+   ilgili admin sekmesine (Açılan Talepler / Para Çekme Talepleri) yönlendirilir. */
+function openAdminInboxItem(id){
+  const n = (state.adminInboxNotifications||[]).find(x=>String(x.id)===String(id));
+  if(!n) return;
+  markAdminInboxRead(id);
+  state.adminTab = n.type==='withdrawal' ? 'paracekme' : 'destekler';
+  render();
+}
+
 /* ---------------- DUYURULAR (bildirim sisteminin sistem bildirimi kaynağı) ---------------- */
 let _announceUnsub = null;
 function announceMatchesUser(a){
@@ -3372,7 +3577,7 @@ function renderUserMenu(){
       <div><b style="font-size:13px;">${esc(displayName())}</b><div class="small text-mid">Bakiye: ${fmt(state.balance)}</div></div>
     </div>
     <button class="panel-nav-item" style="width:100%;border-radius:0;padding:11px 14px;" onclick="go('account',{});state.panelsOpen.userMenu=false;">${ic('user',14)} Hesabım</button>
-    ${state.isAdmin?`<button class="panel-nav-item" style="width:100%;border-radius:0;padding:11px 14px;color:var(--orange);" onclick="go('admin',{});state.panelsOpen.userMenu=false;">${ic('wrench',14)} Yönetim Paneli</button>`:''}
+    ${state.isAdmin?`<button class="panel-nav-item" style="width:100%;border-radius:0;padding:11px 14px;color:var(--orange);" onclick="state.adminTab='gelenkutusu';go('admin',{});state.panelsOpen.userMenu=false;">${ic('wrench',14)} Yönetim Paneli ${adminInboxUnreadCount()?`<span class="pill pill-danger" style="margin-left:4px;">${adminInboxUnreadCount()}</span>`:''}</button>`:''}
     <button class="panel-nav-item" style="width:100%;border-radius:0;padding:11px 14px;" onclick="go('support',{});state.panelsOpen.userMenu=false;">${ic('help',14)} Destek</button>
     <button class="panel-nav-item" style="width:100%;border-radius:0;padding:11px 14px;color:var(--danger);" onclick="logoutUser();">⏻ Çıkış Yap</button>
   </div>`;
@@ -3408,7 +3613,7 @@ function renderAccountPanel(){
     {icon:'wallet', label:'Mağaza Doplinglerim', onclick:"accountPanelGo('account',{tab:'bakiyegecmisi'})"},
     {icon:'help', label:'Destek Sistemi', onclick:"accountPanelGo('support',{})"},
   ];
-  if(state.isAdmin){ settingsRows.push({icon:'wrench', label:'Yönetim Paneli', onclick:"accountPanelGo('admin',{})"}); }
+  if(state.isAdmin){ settingsRows.push({icon:'wrench', label:'Yönetim Paneli'+(adminInboxUnreadCount()?` <span class="pill pill-danger" style="margin-left:4px;">${adminInboxUnreadCount()}</span>`:''), onclick:"state.adminTab='gelenkutusu';accountPanelGo('admin',{})"}); }
   return `
   <div class="ap-overlay" onclick="if(event.target===this) closeAccountPanel()">
     <div class="ap-panel">
@@ -4158,7 +4363,8 @@ function updateBodyScrollLock(){
   const shell = document.getElementById('msgsShell');
   const msgsFullscreen = state.view==='messages' && !!shell && shell.classList.contains('chat-open') && window.innerWidth < 860;
   const gchatFullscreen = !!(state.gchat && state.gchat.open) && window.innerWidth < 860;
-  document.body.style.overflow = (msgsFullscreen || gchatFullscreen) ? 'hidden' : '';
+  const aichatFullscreen = !!(state.aichat && state.aichat.open) && window.innerWidth < 860;
+  document.body.style.overflow = (msgsFullscreen || gchatFullscreen || aichatFullscreen) ? 'hidden' : '';
 }
 /* ---------------- MESAJLAŞMA: SOHBET BAŞLATMA ----------------
    Kullanıcı bir mağazaya (satıcıya) yazmak istediğinde çağrılır. Aynı iki
@@ -5553,17 +5759,21 @@ async function createWithdrawRequest({fullName, iban, amount}){
     uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı',
     fullName: fullName, iban: iban, amount: amount, status: 'Bekliyor', note: '', date: 'Bugün',
   };
+  let id;
   if(FIREBASE_ENABLED && state.uid){
     try{
       reqData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      await fbDb.collection('withdrawalRequests').add(reqData);
+      const ref = await fbDb.collection('withdrawalRequests').add(reqData);
+      id = ref.id;
     }catch(err){ toast('Talep gönderilemedi: '+authErrorMessage(err), 'error'); return; }
   }else{
+    id = 'WD-'+Date.now();
     state.withdrawalRequests = state.withdrawalRequests || [];
-    state.withdrawalRequests.unshift(Object.assign({id:'WD-'+Date.now()}, reqData));
+    state.withdrawalRequests.unshift(Object.assign({id}, reqData));
   }
   const fn=document.getElementById('wdFullName'), ib=document.getElementById('wdIban'), am=document.getElementById('wdAmount');
   if(ib) ib.value=''; if(am) am.value='';
+  pushAdminNotification({ type:'withdrawal', message: fullName+' — '+fmt(amount)+' tutarında para çekme talebi (IBAN: '+iban+')', refId: id });
   toast('Para çekme talebin alındı, admin onayı sonrası bakiyenden düşülüp IBAN\'ına gönderilecek.','success');
   render();
 }
@@ -6324,7 +6534,10 @@ function detachGlobalChatListener(){
 }
 function toggleGlobalChat(){
   state.gchat.open = !state.gchat.open;
-  if(state.gchat.open){ state.gchat.unread = 0; state.gchat.readCount = state.gchat.messages.length; }
+  if(state.gchat.open){
+    state.gchat.unread = 0; state.gchat.readCount = state.gchat.messages.length;
+    if(state.aichat.open){ state.aichat.open=false; renderAIChatWidget(); }
+  }
   renderGlobalChatWidget();
   updateBodyScrollLock();
 }
@@ -6458,6 +6671,238 @@ function renderGlobalChatWidget(){
     }
   }
   scrollGlobalChatToBottom();
+}
+
+/* ================= AI ASİSTAN ================= */
+/* Kullanıcıya özel, tek kişilik yapay zekâ sohbet asistanı. Global Sohbet'in
+   aksine kimseyle paylaşılmaz ve giriş şartı yoktur. Cevaplar HER ZAMAN
+   Firebase Cloud Function ("aiAssistant") üzerinden alınır; bu sayede
+   gerçek Anthropic API anahtarı sadece sunucuda (Cloud Function ortam
+   değişkeninde) durur ve istemci tarafındaki bu dosyaya ASLA yazılmaz.
+   Cloud Function'ın nasıl kurulacağı /functions/index.js dosyasında
+   açıklanmıştır. Firebase/Functions henüz devreye alınmamışsa (yerel demo
+   modu) asistan, sitedeki SSS verisiyle sınırlı, uydurmayan basit bir yerel
+   yanıt üretir ve bunu kullanıcıya açıkça belirtir. */
+
+// Asistanın "bilgi tabanı": sitenin GERÇEK, elde mevcut verileri. Bu metin
+// sistem talimatı olarak AI'a gönderilir; "bilmediğini uydurma" kısıtı
+// server tarafında da tekrar zorlanır (bkz. functions/index.js).
+function buildSiteKnowledgeForAI(){
+  const catList = CATEGORIES.map(c=>c.name).join(', ');
+  const typeList = TYPES.map(t=>t.name).join(', ');
+  const faqText = FAQS.map(f=>`S: ${f[0]}\nC: ${f[1]}`).join('\n');
+  return [
+    'Site adı: NADAS HİZMETLERİ',
+    'Site açıklaması: Oyun hesapları, UC/elmas bakiye, popülerlik (boost), klan ve takas ilanları için güvenli, hızlı pazaryeri.',
+    'Güvenlik/işleyiş: Alım-satım işlemleri güvenli ödeme altyapısı ve emanet (escrow) sistemiyle yürütülür. Satıcılar onay sürecinden geçer, tüm işlemler kayıt altına alınır, destek ekibi 7/24 aktiftir.',
+    `Kategoriler: ${catList}`,
+    `İlan türleri: ${typeList}`,
+    'İletişim: destek@nadashizmetleri.com, 0850 000 00 00, Destek Merkezi (Canlı Destek) üzerinden ulaşılabilir.',
+    'Sık Sorulan Sorular:',
+    faqText,
+  ].join('\n');
+}
+/* ================= AI ASİSTAN — DOĞRUDAN TARAYICIDAN API ÇAĞRISI =================
+   UYARI: Kullanıcının açık talebiyle, tek bir HTML dosyası yayınlanır
+   yayınlanmaz çalışsın diye API anahtarı burada, istemci tarafında
+   tutuluyor. Bu, anahtarı "Sayfa Kaynağını Görüntüle" ile herkesin
+   görebileceği anlamına gelir — normal şartlarda ÖNERİLMEZ (bkz. daha
+   güvenli /functions/index.js alternatifi). Bunu kullanırsan MUTLAKA:
+   - Anthropic Console'da bu anahtar için harcama/kullanım limiti koy,
+   - Anahtarı SADECE bu site için oluşturulmuş, başka hiçbir yerde
+     kullanılmayan ayrı bir anahtar yap,
+   - Kötüye kullanım fark edersen anahtarı hemen iptal edip yenisini çıkar.
+   Aşağıdaki satıra kendi Anthropic API anahtarını yaz: */
+const ANTHROPIC_API_KEY = "BURAYA_ANTHROPIC_API_ANAHTARINI_YAZIN";
+const ANTHROPIC_ENABLED = !/BURAYA_/.test(ANTHROPIC_API_KEY) && !!ANTHROPIC_API_KEY;
+const ANTHROPIC_MODEL = "claude-sonnet-4-6";
+
+function buildAISystemPrompt(siteContext){
+  return [
+    "Sen NADAS HİZMETLERİ adlı oyun/dijital ürün pazaryeri sitesinin resmi yapay zekâ asistanısın.",
+    "KURALLAR:",
+    "- Her zaman TÜRKÇE cevap ver.",
+    "- Cevapların KISA ve NET olsun (mümkünse 2-4 cümle).",
+    "- Site hakkındaki sorularda SADECE aşağıdaki 'SİTE BİLGİLERİ' bölümündeki bilgileri kullan.",
+    "- Sana verilmeyen bir şeyi (fiyat, kampanya, kural, sipariş/bakiye durumu vb.) KESİNLİKLE UYDURMA.",
+    "- Cevabı SİTE BİLGİLERİ içinde bulamıyorsan bunu açıkça söyle ve kullanıcıyı Destek Merkezi'ne yönlendir.",
+    "- Kullanıcının hesabına/bakiyesine/siparişlerine erişimin yok; bu tür sorularda ilgili sayfaya veya Destek Merkezi'ne yönlendir.",
+    "",
+    "SİTE BİLGİLERİ:",
+    (siteContext||'').slice(0,6000),
+  ].join("\n");
+}
+async function callAnthropicDirectly(text, history){
+  const messages = history
+    .filter(m=>m && (m.role==='user'||m.role==='assistant') && m.text)
+    .map(m=>({ role:m.role, content:String(m.text).slice(0,AICHAT_TEXT_MAX) }));
+  messages.push({ role:'user', content:text });
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version":"2023-06-01",
+      "anthropic-dangerous-direct-browser-access":"true",
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 400,
+      system: buildAISystemPrompt(buildSiteKnowledgeForAI()),
+      messages,
+    }),
+  });
+  if(!resp.ok){
+    const errText = await resp.text().catch(()=> '');
+    console.error('Anthropic API hata:', resp.status, errText);
+    throw new Error('Anthropic API hata: '+resp.status);
+  }
+  const json = await resp.json();
+  const reply = (json.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+  if(!reply) throw new Error('Boş yanıt');
+  return reply;
+}
+const AICHAT_TEXT_MAX = 600;
+const AICHAT_HISTORY_LIMIT = 12; // AI'a gönderilecek son mesaj sayısı (bağlam için)
+function toggleAIChat(){
+  state.aichat.open = !state.aichat.open;
+  if(state.aichat.open && state.gchat.open){ state.gchat.open=false; renderGlobalChatWidget(); }
+  renderAIChatWidget();
+  updateBodyScrollLock();
+}
+function closeAIChat(){
+  if(state.aichat.open){ state.aichat.open=false; renderAIChatWidget(); updateBodyScrollLock(); }
+}
+function scrollAIChatToBottom(){
+  const el = document.getElementById('aichatThread');
+  if(el) el.scrollTop = el.scrollHeight;
+}
+// Firebase/Functions bağlı değilken (yerel demo modu) kullanılan, UYDURMAYAN
+// basit yanıt üreticisi: sadece SSS içinde anahtar kelime eşleşmesi ararsa
+// cevap verir; eşleşme yoksa bilmediğini açıkça söyler.
+function localAIFallbackAnswer(text){
+  const q = text.toLocaleLowerCase('tr');
+  let best=null, bestScore=0;
+  FAQS.forEach(f=>{
+    const words = f[0].toLocaleLowerCase('tr').split(/[^a-zçğıöşü0-9]+/).filter(w=>w.length>3);
+    let score=0;
+    words.forEach(w=>{ if(q.includes(w)) score++; });
+    if(score>bestScore){ bestScore=score; best=f; }
+  });
+  if(best && bestScore>0) return best[1];
+  return 'Bu konuda elimde kesin bir bilgi yok, yanlış bilgi vermemek için tahmin yürütmek istemiyorum. Detaylı yardım için Destek Merkezi\'nden bize yazabilirsin.';
+}
+async function sendAIChatMessage(text){
+  text = (text||'').trim().slice(0, AICHAT_TEXT_MAX);
+  if(!text || state.aichat.loading) return;
+  state.aichat.messages.push({ role:'user', text, time:'Şimdi' });
+  state.aichat.loading = true;
+  renderAIChatWidget();
+  try{
+    let replyText = '';
+    const history = state.aichat.messages.slice(-AICHAT_HISTORY_LIMIT-1,-1)
+      .map(m=>({ role:m.role, text:m.text }));
+    if(ANTHROPIC_ENABLED){
+      // Tek HTML dosyası, anahtar gömülü haliyle doğrudan çalışır.
+      replyText = await callAnthropicDirectly(text, history);
+    }else if(FIREBASE_ENABLED && fbFunctions){
+      const callAssistant = fbFunctions.httpsCallable('aiAssistant');
+      const res = await callAssistant({ message:text, history, siteContext:buildSiteKnowledgeForAI() });
+      replyText = (res && res.data && res.data.reply) ? String(res.data.reply) : '';
+      if(!replyText) throw new Error('Boş yanıt');
+    }else{
+      // Yerel demo modu / henüz hiçbir AI bağlantısı yapılandırılmamış.
+      await new Promise(r=>setTimeout(r, 450));
+      replyText = localAIFallbackAnswer(text);
+    }
+    state.aichat.messages.push({ role:'assistant', text:replyText, time:'Şimdi' });
+  }catch(err){
+    console.error('AI Asistan yanıt veremedi:', err);
+    state.aichat.messages.push({ role:'assistant', text:'Şu anda yanıt veremiyorum, birkaç dakika sonra tekrar dener misin? Acil konular için Destek Merkezi\'ni kullanabilirsin.', time:'Şimdi' });
+  }
+  state.aichat.loading = false;
+  renderAIChatWidget();
+}
+function aichatSuggestionClick(q){
+  const input = document.getElementById('aichatComposeInput');
+  if(input) input.value = q;
+  sendAIChatMessage(q);
+}
+function renderAIChatBubble(m){
+  const mine = m.role==='user';
+  return `
+  <div class="aichat-msg ${mine?'me':'them'}">
+    ${!mine ? `<div class="aichat-avatar">${ic('sparkle',13)}</div>` : ''}
+    <div class="msg-bubble ${mine?'me':'them'} aichat-bubble">${esc(m.text)}</div>
+  </div>`;
+}
+function aichatThreadHtml(){
+  if(!state.aichat.messages.length){
+    return `
+    <div class="aichat-empty">
+      <b>Merhaba, ben NADAS Asistanı 👋</b>
+      Site hakkında merak ettiğin her şeyi bana sorabilirsin.
+      <div class="aichat-suggestions">
+        <button type="button" class="aichat-suggestion-chip" onclick="aichatSuggestionClick('Bakiyemi nasıl yüklerim?')">Bakiye nasıl yüklenir?</button>
+        <button type="button" class="aichat-suggestion-chip" onclick="aichatSuggestionClick('İlan vermek ücretli mi?')">İlan ücretli mi?</button>
+        <button type="button" class="aichat-suggestion-chip" onclick="aichatSuggestionClick('Ödemem güvende mi?')">Ödeme güvenliği</button>
+      </div>
+    </div>`;
+  }
+  return state.aichat.messages.map(renderAIChatBubble).join('') +
+    (state.aichat.loading ? `
+    <div class="aichat-msg them">
+      <div class="aichat-avatar">${ic('sparkle',13)}</div>
+      <div class="msg-bubble them aichat-bubble"><div class="aichat-typing"><span></span><span></span><span></span></div></div>
+    </div>` : '');
+}
+function renderAIChatWidget(){
+  const root = document.getElementById('aiChatRoot');
+  if(!root) return;
+  const a = state.aichat;
+  const panel = document.getElementById('aichatPanel');
+  // Global Sohbet widget'ındaki aynı prensiple: panel DOM'da zaten varsa
+  // sadece mesaj akışını/durumu güncelle, compose input'a DOKUNMA — aksi
+  // halde kullanıcı yazarken mobil klavye kapanabilir.
+  if(panel){
+    const thread = document.getElementById('aichatThread');
+    if(thread) thread.innerHTML = aichatThreadHtml();
+    panel.classList.toggle('is-open', !!a.open);
+    const input = document.getElementById('aichatComposeInput');
+    const sendBtn = document.getElementById('aichatSendBtn');
+    if(input) input.disabled = !!a.loading;
+    if(sendBtn) sendBtn.disabled = !!a.loading;
+    const fab = root.querySelector('.aichat-fab');
+    if(fab){
+      fab.classList.toggle('is-open', !!a.open);
+      fab.setAttribute('aria-label', a.open?'AI Asistanı kapat':'AI Asistanı aç');
+      fab.innerHTML = ic(a.open?'close':'sparkle', 22);
+    }
+    scrollAIChatToBottom();
+    return;
+  }
+  root.innerHTML = `
+    <button class="aichat-fab ${a.open?'is-open':''}" onclick="toggleAIChat()" aria-label="${a.open?'AI Asistanı kapat':'AI Asistanı aç'}">
+      ${ic(a.open?'close':'sparkle', 22)}
+    </button>
+    <div class="aichat-panel ${a.open?'is-open':''}" id="aichatPanel" role="dialog" aria-label="AI Asistan">
+      <div class="aichat-head">
+        <div class="aichat-head-ico">${ic('sparkle',16)}</div>
+        <div class="aichat-head-txt">
+          <b>NADAS Asistanı</b>
+          <span>Yapay zekâ · Türkçe destek</span>
+        </div>
+        <button class="aichat-close" onclick="toggleAIChat()" aria-label="Kapat">${ic('close',18)}</button>
+      </div>
+      <div class="aichat-thread" id="aichatThread">${aichatThreadHtml()}</div>
+      <form class="aichat-compose" onsubmit="event.preventDefault(); if(this.amsg.value.trim()){ sendAIChatMessage(this.amsg.value); this.reset(); }">
+        <input id="aichatComposeInput" name="amsg" placeholder="Bir şey sor..." maxlength="${AICHAT_TEXT_MAX}" autocomplete="off" ${a.loading?'disabled':''}>
+        <button class="btn btn-primary" type="submit" id="aichatSendBtn" aria-label="Gönder" ${a.loading?'disabled':''}>${ic('send',17)}</button>
+      </form>
+      <div class="aichat-disclaimer">Yapay zekâ hata yapabilir, önemli işlemlerde Destek Merkezi'ni kullan.</div>
+    </div>
+  `;
+  scrollAIChatToBottom();
 }
 
 /* ---------------- HESABIM ---------------- */
@@ -6869,9 +7314,30 @@ function viewSupport(){
 function toggleFaq(i){ document.getElementById('faq'+i).classList.toggle('open'); }
 function createTicket(subject, desc){
   if(!subject) return;
-  const id = 'DEST-'+(120+state.tickets.length);
+  submitTicketRequest(subject, desc);
+}
+/* Destek talebini oluşturur; Firebase etkinken `supportTickets` koleksiyonuna
+   kalıcı olarak yazar (admin panelindeki canlı dinleyici bunu yakalar) ve
+   ardından pushAdminNotification() ile admin gelen kutusuna ANINDA bir
+   bildirim düşer — gönderen kullanıcı, talep konusu ve mesajı içerir. */
+async function submitTicketRequest(subject, desc){
   const priority = isPassActive();
-  state.tickets.unshift({id, subject, status:'Açık', date:'Bugün', priority, thread:[{from:'me',text:desc,time:'Şimdi'}]});
+  const ticketData = {
+    uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı',
+    subject, status:'Açık', priority, thread:[{from:'me',text:desc,time:'Şimdi'}], date:'Bugün',
+  };
+  let id;
+  if(FIREBASE_ENABLED && state.uid){
+    try{
+      ticketData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = await fbDb.collection('supportTickets').add(ticketData);
+      id = ref.id;
+    }catch(err){ toast('Talep gönderilemedi: '+authErrorMessage(err), 'error'); return; }
+  }else{
+    id = 'DEST-'+(120+state.tickets.length);
+  }
+  state.tickets.unshift(Object.assign({id}, ticketData));
+  pushAdminNotification({ type:'support', message: subject+(desc?' — '+desc:''), refId: id });
   toast(priority?`Hızlı Destek talebin oluşturuldu: ${id}`:'Destek talebin oluşturuldu: '+id,'success');
   render();
 }
@@ -6908,6 +7374,7 @@ function replyTicket(text){
 
 /* ---------------- ADMİN PANELİ ---------------- */
 const ADMIN_TABS = [
+  ['gelenkutusu','bell','Gelen Talep Bildirimleri'],
   ['destekler','help','Açılan Talepler'],['odemeler','card','Bakiye Yükleme Onayları'],
   ['paracekme','send','Para Çekme Talepleri'],
   ['kullanicilar','users','Kullanıcı Yönetimi'],['ilanlar','clipboard','İlan Yönetimi'],
@@ -6960,7 +7427,7 @@ function viewAdmin(){
     </div>
     <div class="panel-layout">
       <aside class="panel-nav">
-        ${ADMIN_TABS.map(([id,icon,label])=>`<button class="panel-nav-item ${tab===id?'active':''}" onclick="state.adminTab='${id}';render();">${ic(icon,15)} ${label}</button>`).join('')}
+        ${ADMIN_TABS.map(([id,icon,label])=>`<button class="panel-nav-item ${tab===id?'active':''}" onclick="state.adminTab='${id}';render();">${ic(icon,15)} ${label}${id==='gelenkutusu'&&adminInboxUnreadCount()?` <span class="pill pill-danger" style="margin-left:4px;">${adminInboxUnreadCount()}</span>`:''}</button>`).join('')}
       </aside>
       <div class="panel-content">
         <div class="panel-content-head">
@@ -7149,6 +7616,29 @@ function adminTabContent(tab){
       <tr><th>ID</th><th>Kullanıcı</th><th>Konu</th><th>Durum</th><th>İşlem</th></tr>
       ${ADMIN_COMPLAINTS.map(c=>`<tr><td class="mono">${c.id}</td><td>${c.user}</td><td>${c.subject}</td><td><span class="pill ${c.status==='Çözüldü'?'pill-success':'pill-warning'}">${c.status}</span></td><td><button class="btn btn-outline btn-sm" onclick="toast('Şikayet detayı açıldı (demo)')">İncele</button></td></tr>`).join('')}
     </table></div>`;
+  }
+  if(tab==='gelenkutusu'){
+    const list = (state.adminInboxNotifications||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const unread = list.filter(n=>!n.read).length;
+    return `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <p class="small text-mid" style="margin:0;max-width:520px;">Bir kullanıcı Destek Talebi veya Para Çekme Talebi gönderdiğinde burada anında listelenir. Bir kayda tıklamak onu okundu işaretler ve ilgili sekmeye götürür.</p>
+      ${unread?`<button class="btn btn-outline btn-sm" onclick="markAllAdminInboxRead()">${ic('checkCircle',13)} Tümünü Okundu İşaretle (${unread})</button>`:''}
+    </div>
+    ${list.length ? list.map(n=>{
+      const meta = adminInboxMeta(n.type);
+      return `<div class="list-row" style="cursor:pointer;" onclick="openAdminInboxItem('${n.id}')">
+        <div class="list-row-media" style="background:${meta.color}22;color:${meta.color};">${ic(meta.icon,18)}</div>
+        <div style="flex:1;min-width:0;">
+          <b style="font-size:12.5px;">${esc(n.fromUserName||n.fromUid||'Kullanıcı')}</b>
+          <div class="small text-mid" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(meta.label)} · ${esc(n.message||'')}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          ${!n.read?`<span class="pill pill-danger">Yeni</span>`:`<span class="small text-mid">Okundu</span>`}
+          <span class="small text-mid">${n.createdAt?timeAgo(n.createdAt):''}</span>
+        </div>
+      </div>`;
+    }).join('') : '<div class="empty-state"><div class="em-icon">'+ic('bell',30)+'</div><b>Henüz gelen bildirim yok</b><p class="small mt-10">Yeni bir destek talebi veya para çekme talebi geldiğinde burada görünecek.</p></div>'}`;
   }
   if(tab==='destekler'){
     const sorted = state.tickets.slice().sort((a,b)=>(b.priority?1:0)-(a.priority?1:0));
@@ -7942,6 +8432,9 @@ if(FIREBASE_ENABLED){ loadListingsFromFirestore(); loadBannersFromFirestore(); }
    modunda ise akış doğrudan burada başlar. */
 renderGlobalChatWidget();
 if(!FIREBASE_ENABLED){ listenGlobalChat(); }
+/* AI Asistan FAB'ı da (Global Sohbet'in hemen üstünde) sayfa açılır açılmaz
+   görünür olsun diye burada bir kez render edilir. */
+renderAIChatWidget();
 document.addEventListener('click', function(e){
   if(e.target.closest('.catmenu-overlay')) return;
   if(e.target.closest('.icon-btn') || e.target.closest('[style*="position:absolute"]')) return;
@@ -7952,6 +8445,9 @@ document.addEventListener('click', function(e){
   if(state.gchat && state.gchat.open && !e.target.closest('.gchat-panel') && !e.target.closest('.gchat-fab')){
     closeGlobalChat();
   }
+  if(state.aichat && state.aichat.open && !e.target.closest('.aichat-panel') && !e.target.closest('.aichat-fab')){
+    closeAIChat();
+  }
 });
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape' && (state.panelsOpen.notif||state.panelsOpen.userMenu||state.panelsOpen.catMenu||state.panelsOpen.accountPanel)){
@@ -7959,6 +8455,7 @@ document.addEventListener('keydown', function(e){
     renderHeaderOnly(); renderCatMenuRoot();
   }
   if(e.key==='Escape' && state.gchat && state.gchat.open){ closeGlobalChat(); }
+  if(e.key==='Escape' && state.aichat && state.aichat.open){ closeAIChat(); }
 });
 /* Ekran döndürme / pencere yeniden boyutlandırmada (ör. tablet <-> masaüstü
    eşiği geçilirken) mesajlar sayfasındaki VE Global Sohbet panelindeki tam
