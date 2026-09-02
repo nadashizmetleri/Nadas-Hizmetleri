@@ -1846,6 +1846,7 @@ const CATEGORIES = [
   {id:'lol', name:'League of Legends', icon:'hex'},
   {id:'mlbb', name:'Mobile Legends', icon:'shield'},
   {id:'roblox', name:'Roblox', icon:'cube'},
+  {id:'brawlstars', name:'Brawl Stars', icon:'sparkle'},
   {id:'freefire', name:'Free Fire', icon:'flame'},
   {id:'social', name:'Sosyal Medya', icon:'smartphone'},
   {id:'other', name:'Diğer', icon:'more'},
@@ -2091,6 +2092,50 @@ const FF_TYPE_FIELDS = {
   ],
 };
 
+/* ---------------- BRAWL STARS — KATEGORİYE ÖZEL PROFESYONEL İLAN ALANLARI ---------------- */
+const BS_RANK_TIERS = ['Bronz','Gümüş','Altın','Elmas','Mithril','Efsane','Ustalar'];
+const BS_RANKS = [];
+BS_RANK_TIERS.forEach(t=>['III','II','I'].forEach(d=>BS_RANKS.push(t+' '+d)));
+BS_RANKS.push('Pro');
+const BS_SERVERS = ['Türkiye / Orta Doğu','Avrupa','Amerika','Güney Asya','MENA','Global'];
+const BS_GEM_PACKAGES = [30,80,170,360,950,2000];
+const BS_LOGIN_METHODS = ['Supercell ID','Google Play','Facebook','Apple ID','Bağlı Değil (Misafir)'];
+const BS_DELIVERY_METHODS = ['Hesaba Hediye Gönderimi','Kullanıcı Etiketi (#Tag) ile Gönderim'];
+const BS_TYPE_FIELDS = {
+  hesap: [
+    {id:'trophies', label:'Toplam Kupa', kind:'number', placeholder:'Örn: 35000'},
+    {id:'rank', label:'Rütbe (Güncel Sezon)', kind:'select', options:BS_RANKS},
+    {id:'server', label:'Sunucu / Bölge', kind:'select', options:BS_SERVERS},
+    {id:'brawlerCount', label:'Açık Brawler Sayısı', kind:'number', placeholder:'0'},
+    {id:'maxBrawlerCount', label:'Maksimum Seviye (Power 11) Brawler Sayısı', kind:'number', placeholder:'0'},
+    {id:'gemBalance', label:'Hesaptaki Elmas (Gems)', kind:'number', placeholder:'0'},
+    {id:'skinCount', label:'Skin Sayısı', kind:'number', placeholder:'0'},
+    {id:'loginMethod', label:'Giriş Yöntemi', kind:'select', options:BS_LOGIN_METHODS},
+  ],
+  bakiye: [
+    {id:'gemAmount', label:'Elmas (Gem) Miktarı', kind:'select', options:BS_GEM_PACKAGES.map(String).concat(['Özel Miktar'])},
+    {id:'gemCustom', label:'Özel Miktar (üstte "Özel Miktar" seçtiysen)', kind:'number', placeholder:'0'},
+    {id:'server', label:'Sunucu / Bölge', kind:'select', options:BS_SERVERS},
+    {id:'deliveryMethod', label:'Teslimat Yöntemi', kind:'select', options:BS_DELIVERY_METHODS},
+  ],
+  boost: [
+    {id:'currentRank', label:'Mevcut Rütbe', kind:'select', options:BS_RANKS},
+    {id:'targetRank', label:'Hedef Rütbe', kind:'select', options:BS_RANKS},
+    {id:'server', label:'Sunucu / Bölge', kind:'select', options:BS_SERVERS},
+    {id:'estDuration', label:'Tahmini Süre', kind:'text', placeholder:'Örn: 3-5 gün'},
+  ],
+  klan: [
+    {id:'clanName', label:'Kulüp Adı', kind:'text', placeholder:'Örn: NADAS ESPOR'},
+    {id:'clanTrophies', label:'Kulüp Kupası', kind:'number', placeholder:'0'},
+    {id:'memberCount', label:'Üye Sayısı', kind:'number', placeholder:'0'},
+    {id:'clanReq', label:'Katılım Şartı (Min. Kupa)', kind:'number', placeholder:'0'},
+  ],
+  takas: [
+    {id:'wantItem', label:'Almak İstediğin Ürün', kind:'text', placeholder:'Örn: Free Fire hesabı'},
+    {id:'valueRange', label:'Denk Değer Aralığı (₺)', kind:'text', placeholder:'Örn: 500-1000'},
+  ],
+};
+
 /* ---------------- ROBLOX — KATEGORİYE ÖZEL PROFESYONEL İLAN ALANLARI ---------------- */
 const RBLX_ROBUX_PACKAGES = [400,800,1700,4500,10000,22500];
 const RBLX_DELIVERY_METHODS = ['Hesaba Hediye Gönderimi','Grup Fonu Ödemesi','Oyun İçi Game Pass ile Gönderim'];
@@ -2173,6 +2218,7 @@ const CATEGORY_TYPE_FIELDS = {
   lol: LOL_TYPE_FIELDS,
   mlbb: MLBB_TYPE_FIELDS,
   roblox: RBLX_TYPE_FIELDS,
+  brawlstars: BS_TYPE_FIELDS,
   freefire: FF_TYPE_FIELDS,
   social: SOC_TYPE_FIELDS,
 };
@@ -2646,11 +2692,18 @@ async function handleProfilePhotoSelect(inputEl){
        güncel bakiye/üyelik durumu vb.) gecikmeden ekrana yansır.
 ------------------------------------------------------------------- */
 const NADAS_NAV_KEY = 'nadas_pending_nav_v1';
+/* Bekleyen bir hedef navigasyonun "taze" sayılacağı azami süre (ms). Bunun
+   üzerindeki bir kayıt (ör. sekme kapatılmadan uzun süre açık bırakılmış,
+   tarayıcının oturumu geri yüklemesi gibi durumlarda sessionStorage'da
+   takılı kalmış eski bir hedef) yok sayılır ve kullanıcı doğrudan ana
+   sayfayla karşılanır — böylece "siteyi her açtığımda eski kategoriye
+   atıyor" sorunu yaşanmaz. */
+const NADAS_NAV_TTL_MS = 4000;
 /* Bir sonraki tam sayfa yüklemesinde hangi görünüme (view) gidileceğini
    sekmeye özel olarak kaydedip gerçek bir tarayıcı navigasyonu başlatır. */
 function hardNavigate(view, params, opts){
   opts = opts || {};
-  try{ sessionStorage.setItem(NADAS_NAV_KEY, JSON.stringify({view: view || 'home', params: params || {}})); }
+  try{ sessionStorage.setItem(NADAS_NAV_KEY, JSON.stringify({view: view || 'home', params: params || {}, ts: Date.now()})); }
   catch(e){ /* sessionStorage kapalıysa sorun değil, yine de ana sayfaya yönlendirir */ }
   if(opts.replace){
     // Çıkış (logout) sonrası: mevcut (giriş yapılmış) geçmiş kaydının ÜZERİNE yazar,
@@ -2661,15 +2714,24 @@ function hardNavigate(view, params, opts){
   }
 }
 /* Sayfa yeniden yüklendiğinde bekleyen bir hedef görünüm var mı diye bakar,
-   varsa bir kereliğine tüketir (bir daha kullanılmasın diye siler). */
+   varsa bir kereliğine tüketir (bir daha kullanılmasın diye siler). Kayıt
+   NADAS_NAV_TTL_MS'den daha eskiyse (taze bir tıklamadan gelmiyorsa) yok
+   sayılır ve kullanıcı ana sayfada karşılanır. */
 function consumePendingNav(){
   let pending = null;
   try{
     const raw = sessionStorage.getItem(NADAS_NAV_KEY);
-    if(raw){ pending = JSON.parse(raw); sessionStorage.removeItem(NADAS_NAV_KEY); }
+    sessionStorage.removeItem(NADAS_NAV_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed.ts==='number' && (Date.now()-parsed.ts)<=NADAS_NAV_TTL_MS){
+        pending = parsed;
+      }
+    }
   }catch(e){}
   return pending;
 }
+
 /* Tarayıcının geri/ileri (bfcache) önbelleğinden eski/bayat bir görünümü
    göstermesini engeller — özellikle çıkış yaptıktan sonra geri tuşuyla
    önbellekten "giriş yapılmış" bir ekranın görünmesinin önüne geçer. */
@@ -3473,7 +3535,7 @@ function renderCatMenuRoot(){
 }
 const CAT_COLORS = {
   pubgm:'#F5A623', valorant:'#FF4655', lol:'#C8AA6E', mlbb:'#2E4AE0',
-  roblox:'#E23636', freefire:'#111318', social:'#3B8CFF', other:'#1FCF6E',
+  roblox:'#E23636', brawlstars:'#FBBF24', freefire:'#111318', social:'#3B8CFF', other:'#1FCF6E',
 };
 function catColor(id){ return CAT_COLORS[id] || 'var(--orange)'; }
 function goCategory(id){
@@ -3940,6 +4002,18 @@ const CATEGORY_PAGES = {
       {label:'Hazır Hesap', icon:'user', type:'hesap'},
       {label:'Random Hesap', icon:'shuffle', type:'hesap'},
       {label:'Oyun İçi Ürün Takas', icon:'undo', type:'takas'},
+    ],
+  },
+  brawlstars: {
+    title:'Brawl Stars',
+    desc:'Brawl Stars, Supercell tarafından geliştirilen hızlı tempolu 3v3 mobil oyundur. Brawl Stars ürünleri arasında Gem/Elmas, hazır hesap, random hesap, kupa/rütbe boost ve klan hizmetlerine erişebilirsiniz.',
+    searchPlaceholder:'Brawl Stars ürünlerinde ara...',
+    cards:[
+      {label:'Brawl Stars Elmas', icon:'wallet', type:'bakiye'},
+      {label:'Random Hesap', icon:'shuffle', type:'hesap'},
+      {label:'Hazır Hesap', icon:'user', type:'hesap'},
+      {label:'Kupa / Rütbe Boost', icon:'bolt', type:'boost'},
+      {label:'Klan', icon:'crown', type:'klan'},
     ],
   },
   freefire: {
