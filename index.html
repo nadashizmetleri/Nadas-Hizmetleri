@@ -1130,8 +1130,32 @@ html,body{touch-action:pan-x pan-y;}
 @keyframes rlspin{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-90deg);}}
 @media(max-width:900px) and (orientation:landscape){
   .rotate-lock{display:flex;}
-  body>*:not(.rotate-lock){display:none !important;}
+  body>*:not(.rotate-lock):not(#offlineLock){display:none !important;}
 }
+
+/* ---------- İNTERNET BAĞLANTISI KİLİDİ ---------- */
+.offline-lock{
+  display:none;position:fixed;inset:0;z-index:999999;
+  background:var(--void);
+  flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px;
+}
+.offline-lock.show{display:flex;}
+.offline-lock .ol-icon{
+  display:flex;align-items:center;justify-content:center;
+  width:64px;height:64px;border-radius:50%;
+  background:var(--panel);border:1px solid var(--border);color:var(--danger);
+}
+.offline-lock .ol-icon svg{width:30px;height:30px;}
+.offline-lock h3{font-family:'Space Grotesk';font-size:17px;color:var(--hi);}
+.offline-lock p{font-size:12.5px;color:var(--mid);max-width:280px;line-height:1.6;}
+.offline-lock .ol-status{
+  display:flex;align-items:center;gap:8px;margin-top:4px;
+  font-family:'JetBrains Mono';font-size:11.5px;color:var(--orange);
+}
+.offline-lock .ol-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);animation:olpulse 1s ease-in-out infinite;}
+.offline-lock .ol-dot:nth-child(2){animation-delay:.15s;}
+.offline-lock .ol-dot:nth-child(3){animation-delay:.3s;}
+@keyframes olpulse{0%,100%{opacity:.25;transform:scale(.8);}50%{opacity:1;transform:scale(1);}}
 </style>
 </head>
 <body>
@@ -1140,6 +1164,43 @@ html,body{touch-action:pan-x pan-y;}
   <h3>Lütfen ekranınızı dikey çevirin</h3>
   <p>NADAS HİZMETLERİ en iyi deneyimi dikey (portre) modda sunar.</p>
 </div>
+
+<!-- İnternet bağlantısı kilidi: bağlantı yokken tüm site bu ekranın
+     ARKASINDA (görünmez ve tıklanamaz) kalır. Bu blok, altındaki Firebase
+     SDK'sından ve uygulamanın ana scriptinden ÖNCE, herhangi bir dış
+     kaynağa ihtiyaç duymadan çalışır — böylece internet olmadan siteye asla
+     girilemez ve bağlantı kesildiği an (uygulama hâlâ yüklü olsa bile)
+     ekran anında kilitlenir. Bağlantı geri geldiğinde otomatik kapanır. */
+<div id="offlineLock" class="offline-lock">
+  <div class="ol-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+      <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+      <line x1="12" y1="20" x2="12.01" y2="20"/>
+    </svg>
+  </div>
+  <h3>İnternet Bağlantısı Yok</h3>
+  <p>NADAS HİZMETLERİ'ni kullanabilmek için internet bağlantına ihtiyacımız var. Bağlantı kurulunca sayfa otomatik olarak devam edecek.</p>
+  <div class="ol-status"><span class="ol-dot"></span><span class="ol-dot"></span><span class="ol-dot"></span><span>Bağlantı bekleniyor…</span></div>
+</div>
+<script>
+(function(){
+  var lockEl = document.getElementById('offlineLock');
+  function showLock(){ lockEl.classList.add('show'); }
+  function hideLock(){ lockEl.classList.remove('show'); }
+  function syncState(){ if(navigator.onLine){ hideLock(); } else { showLock(); } }
+  window.addEventListener('offline', showLock);
+  window.addEventListener('online', syncState);
+  // Sayfa ilk açıldığında da (ör. uçak modu/wifi kapalıyken siteye girilmeye
+  // çalışılırsa) kontrol edilir — internet gelene kadar site hiç açılmaz.
+  syncState();
+})();
+</script>
+
 <div id="toastStack" class="toast-stack"></div>
 <div id="modalRoot"></div>
 <div id="catMenuRoot"></div>
@@ -2555,6 +2616,13 @@ function watchAuthState(){
       detachNotifListener();
       detachWithdrawalListener();
       detachUserDocListener();
+      detachMySalesListener();
+      detachMyOrdersListener();
+      detachMyDeliveriesListener();
+      detachPaymentRequestsListener();
+      detachGlobalTransactionsListener();
+      detachSupportTicketsListener();
+      _myDeliveriesByOrder = {};
       resetPersonalState();
       state.uid=null; state.loggedIn=false; state.isAdmin=false; state.userName=''; state.userEmail='';
       render();
@@ -2719,42 +2787,52 @@ function authErrorMessage(err){
 }
 
 /* ---------------- FIREBASE: İLANLAR ---------------- */
-async function loadListingsFromFirestore(){
-  if(!FIREBASE_ENABLED) return;
-  try{
-    const snap = await fbDb.collection('listings').get();
-    if(!snap.empty){
-      // ÖNEMLİ: Tüm ilanlar (aktif/pasif, stoklu/tükenmiş) LISTINGS içine yüklenir —
-      // filtre burada UYGULANMAZ. Aksi halde satılıp kilitlenen (active:false) bir
-      // ilan, sahibinin "İlanlarım" bölümünden de tamamen kaybolurdu. Herkese açık
-      // yerlerde (anasayfa, pazaryeri, mağaza, arama, benzer ilanlar) görünürlük
-      // isListingPublic()/publicListings() ile ayrıca filtrelenir; "İlanlarım" ve
-      // admin paneli ise tüm ilanları (kilitli olanlar dahil) gösterir.
-      LISTINGS = snap.docs.map(d=>{
-        const data = d.data();
-        return makeListing(Object.assign({id:d.id}, data, {specs: specsFromFirestore(data.specs)}));
-      });
-      render();
-    }
-  }catch(err){ console.error('İlanlar yüklenemedi:', err); }
+/* CANLI (onSnapshot) dinlenir — bir ürün satılıp stoğu/aktifliği değiştiğinde,
+   yeni bir ilan yayınlandığında veya admin bir ilanı düzenlediğinde/sildiğinde,
+   bu değişiklik TÜM açık sekmelerde sayfa yenilemeye gerek kalmadan ANINDA
+   yansır. Giriş yapılmasa bile (misafir) dinlenir — bu yüzden state.uid'e bağlı
+   değildir ve logout'ta kapatılmaz. */
+let _listingsUnsub = null;
+function loadListingsFromFirestore(){
+  if(!FIREBASE_ENABLED || !fbDb) return;
+  if(_listingsUnsub) return; // zaten dinleniyor
+  _listingsUnsub = fbDb.collection('listings').onSnapshot(function(snap){
+    // ÖNEMLİ: Tüm ilanlar (aktif/pasif, stoklu/tükenmiş) LISTINGS içine yüklenir —
+    // filtre burada UYGULANMAZ. Aksi halde satılıp kilitlenen (active:false) bir
+    // ilan, sahibinin "İlanlarım" bölümünden de tamamen kaybolurdu. Herkese açık
+    // yerlerde (anasayfa, pazaryeri, mağaza, arama, benzer ilanlar) görünürlük
+    // isListingPublic()/publicListings() ile ayrıca filtrelenir; "İlanlarım" ve
+    // admin paneli ise tüm ilanları (kilitli olanlar dahil) gösterir.
+    LISTINGS = snap.docs.map(d=>{
+      const data = d.data();
+      return makeListing(Object.assign({id:d.id}, data, {specs: specsFromFirestore(data.specs)}));
+    });
+    render();
+  }, function(err){ console.error('İlanlar dinlenemedi:', err); });
 }
-async function loadBannersFromFirestore(){
-  if(!FIREBASE_ENABLED) return;
-  try{
-    const snap = await fbDb.collection('banners').get();
-    if(!snap.empty){
-      BANNERS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-      render();
-    }
-  }catch(err){ console.error('Bannerlar yüklenemedi:', err); }
+/* CANLI (onSnapshot) dinlenir — admin yeni bir banner ekleyip/düzenleyip
+   sildiğinde anasayfadaki banner alanı tüm kullanıcılarda anında güncellenir. */
+let _bannersUnsub = null;
+function loadBannersFromFirestore(){
+  if(!FIREBASE_ENABLED || !fbDb) return;
+  if(_bannersUnsub) return; // zaten dinleniyor
+  _bannersUnsub = fbDb.collection('banners').onSnapshot(function(snap){
+    BANNERS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    render();
+  }, function(err){ console.error('Bannerlar dinlenemedi:', err); });
 }
-async function loadPaymentRequestsFromFirestore(){
-  if(!FIREBASE_ENABLED) return;
-  try{
-    const snap = await fbDb.collection('paymentRequests').orderBy('createdAt','desc').limit(100).get();
-    state.paymentRequests = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-    if(state.view==='admin') render();
-  }catch(err){ console.error('Ödeme talepleri yüklenemedi:', err); }
+/* CANLI (onSnapshot) dinlenir — kullanıcı yeni bir bakiye yükleme talebi
+   oluşturduğunda admin panelindeki liste sayfa yenilemeden anında güncellenir. */
+let _paymentReqUnsub = null;
+function detachPaymentRequestsListener(){ if(_paymentReqUnsub){ _paymentReqUnsub(); _paymentReqUnsub=null; } }
+function loadPaymentRequestsFromFirestore(){
+  if(!FIREBASE_ENABLED || !fbDb) return;
+  detachPaymentRequestsListener();
+  _paymentReqUnsub = fbDb.collection('paymentRequests').orderBy('createdAt','desc').limit(100)
+    .onSnapshot(function(snap){
+      state.paymentRequests = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      if(state.view==='admin') render();
+    }, function(err){ console.error('Ödeme talepleri dinlenemedi:', err); });
 }
 
 /* ---------------- FIREBASE: PARA ÇEKME TALEPLERİ ----------------
@@ -2794,20 +2872,29 @@ function watchOwnUserDoc(){
     render();
   }, function(err){ console.error('Bakiye dinlenemedi:', err); });
 }
-async function loadGlobalTransactionsFromFirestore(){
-  if(!FIREBASE_ENABLED) return;
-  try{
-    const snap = await fbDb.collection('transactions').orderBy('createdAt','desc').limit(100).get();
-    state.globalTransactions = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-    if(state.view==='admin') render();
-  }catch(err){ console.error('İşlem geçmişi yüklenemedi:', err); }
+let _globalTxUnsub = null;
+function detachGlobalTransactionsListener(){ if(_globalTxUnsub){ _globalTxUnsub(); _globalTxUnsub=null; } }
+function loadGlobalTransactionsFromFirestore(){
+  if(!FIREBASE_ENABLED || !fbDb) return;
+  detachGlobalTransactionsListener();
+  _globalTxUnsub = fbDb.collection('transactions').orderBy('createdAt','desc').limit(100)
+    .onSnapshot(function(snap){
+      state.globalTransactions = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      if(state.view==='admin') render();
+    }, function(err){ console.error('İşlem geçmişi dinlenemedi:', err); });
 }
-async function loadSupportTicketsFromFirestore(){
-  if(!FIREBASE_ENABLED) return;
-  try{
-    const snap = await fbDb.collection('supportTickets').orderBy('createdAt','desc').limit(100).get();
-    if(!snap.empty){ state.tickets = snap.docs.map(d=>Object.assign({id:d.id}, d.data())); if(state.view==='admin') render(); }
-  }catch(err){ console.error('Destek talepleri yüklenemedi:', err); }
+/* CANLI (onSnapshot) dinlenir — kullanıcı yeni bir destek talebi açtığında
+   veya mevcut talebe cevap eklendiğinde admin paneli anında güncellenir. */
+let _supportTicketsUnsub = null;
+function detachSupportTicketsListener(){ if(_supportTicketsUnsub){ _supportTicketsUnsub(); _supportTicketsUnsub=null; } }
+function loadSupportTicketsFromFirestore(){
+  if(!FIREBASE_ENABLED || !fbDb) return;
+  detachSupportTicketsListener();
+  _supportTicketsUnsub = fbDb.collection('supportTickets').orderBy('createdAt','desc').limit(100)
+    .onSnapshot(function(snap){
+      state.tickets = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      if(state.view==='admin') render();
+    }, function(err){ console.error('Destek talepleri dinlenemedi:', err); });
 }
 
 /* ---------------- FIREBASE: DUYURULAR (ANNOUNCEMENTS) ----------------
@@ -4803,54 +4890,72 @@ async function recordSalesForOrder(items, orderId){
   }
 }
 /* Satıcının kendi "Sattıklarım" listesini ve toplam satış sayısını, manuel olarak
-   değiştirilemeyen gerçek satış kayıtlarından (sales koleksiyonu) otomatik yükler. */
-async function loadMySalesFromFirestore(){
+   değiştirilemeyen gerçek satış kayıtlarından (sales koleksiyonu) CANLI (onSnapshot)
+   dinler — bir ürün satıldığı an, sayfa yenilemeye gerek kalmadan listeye düşer. */
+let _mySalesUnsub = null;
+function detachMySalesListener(){ if(_mySalesUnsub){ _mySalesUnsub(); _mySalesUnsub=null; } }
+function loadMySalesFromFirestore(){
   if(!FIREBASE_ENABLED || !fbDb || !state.uid) return;
-  try{
-    const snap = await fbDb.collection('sales').where('sellerUid','==', state.uid).get();
-    const rows = snap.docs.map(d=>{
-      const s = d.data();
-      return { item: s.listingTitle||'İlan', date: (s.createdAt && s.createdAt.toMillis) ? timeAgo(s.createdAt.toMillis()) : 'Bugün', buyer: s.buyerName||'Alıcı', status:'Tamamlandı', price: s.price||0 };
-    });
-    rows.sort((a,b)=> (b.price - a.price)); // en güncel Firestore sırasında zaten gelir; ek bir sıralama gerekmez
-    state.mySales = rows;
-    render();
-  }catch(err){ console.error('Satış geçmişi yüklenemedi:', err); }
+  detachMySalesListener();
+  _mySalesUnsub = fbDb.collection('sales').where('sellerUid','==', state.uid)
+    .onSnapshot(function(snap){
+      const rows = snap.docs.map(d=>{
+        const s = d.data();
+        return { item: s.listingTitle||'İlan', date: (s.createdAt && s.createdAt.toMillis) ? timeAgo(s.createdAt.toMillis()) : 'Bugün', buyer: s.buyerName||'Alıcı', status:'Tamamlandı', price: s.price||0, _sortTs: (s.createdAt && s.createdAt.toMillis) ? s.createdAt.toMillis() : 0 };
+      });
+      rows.sort((a,b)=> b._sortTs - a._sortTs);
+      state.mySales = rows.map(({_sortTs, ...rest})=>rest);
+      render();
+    }, function(err){ console.error('Satış geçmişi dinlenemedi:', err); });
 }
-/* Kullanıcının sipariş geçmişini (satın aldıkları) Firestore'dan yükler ki
-   farklı bir cihazdan/oturumdan giriş yapıldığında da görünür olsun. */
-async function loadMyOrdersFromFirestore(){
-  if(!FIREBASE_ENABLED || !fbDb || !state.uid) return;
-  try{
-    const snap = await fbDb.collection('orders').where('buyerUid','==', state.uid).get();
-    const rows = snap.docs.map(d=>{
-      const o = d.data();
-      return { id: o.id||d.id, item: o.item||'Sipariş', price: o.price||0, date: (o.createdAt && o.createdAt.toMillis) ? timeAgo(o.createdAt.toMillis()) : (o.date||'Bugün'), status: o.status||'Ödeme Alındı / Hazırlanıyor', _sortTs: (o.createdAt && o.createdAt.toMillis) ? o.createdAt.toMillis() : 0 };
-    });
-    rows.sort((a,b)=> b._sortTs - a._sortTs);
-    state.orders = rows.map(({_sortTs, ...rest})=>rest);
-    render();
-    loadMyDeliveriesFromFirestore();
-  }catch(err){ console.error('Sipariş geçmişi yüklenemedi:', err); }
+/* Kullanıcının sipariş geçmişini (satın aldıkları) CANLI dinler ki bir sipariş
+   oluşturulduğunda/durumu değiştiğinde (ör. teslim edildi) farklı bir cihazdan/
+   sekmeden bile sayfa yenilemeden anında görünsün. */
+let _myOrdersUnsub = null;
+let _myDeliveriesByOrder = {};
+function detachMyOrdersListener(){ if(_myOrdersUnsub){ _myOrdersUnsub(); _myOrdersUnsub=null; } }
+function applyDeliveriesToOrders(){
+  state.orders.forEach(o=>{ if(_myDeliveriesByOrder[o.id]) o.deliveries = _myDeliveriesByOrder[o.id]; });
 }
-/* Sayfa yenilendiğinde veya tekrar giriş yapıldığında, önceden teslim edilmiş
-   Random Hesap bilgilerini (Gmail+Şifre) "deliveries" koleksiyonundan tekrar
-   çeker ve ilgili siparişe bağlar. Firestore güvenlik kuralları burada
-   buyerUid==auth.uid dışındaki dokümanları zaten reddetmelidir; sorgu ayrıca
-   istemci tarafında da yalnızca kendi uid'imizle filtrelenir. */
-async function loadMyDeliveriesFromFirestore(){
+function loadMyOrdersFromFirestore(){
   if(!FIREBASE_ENABLED || !fbDb || !state.uid) return;
-  try{
-    const snap = await fbDb.collection('deliveries').where('buyerUid','==', state.uid).get();
-    const byOrder = {};
-    snap.docs.forEach(d=>{
-      const v = d.data();
-      if(v.buyerUid !== state.uid) return; // ekstra güvenlik kontrolü
-      (byOrder[v.orderId] = byOrder[v.orderId]||[]).push({ gmail:v.gmail, password:v.password, listingTitle:v.listingTitle });
-    });
-    state.orders.forEach(o=>{ if(byOrder[o.id]) o.deliveries = byOrder[o.id]; });
-    render();
-  }catch(err){ console.error('Teslimat bilgileri yüklenemedi:', err); }
+  detachMyOrdersListener();
+  _myOrdersUnsub = fbDb.collection('orders').where('buyerUid','==', state.uid)
+    .onSnapshot(function(snap){
+      const rows = snap.docs.map(d=>{
+        const o = d.data();
+        return { id: o.id||d.id, item: o.item||'Sipariş', price: o.price||0, date: (o.createdAt && o.createdAt.toMillis) ? timeAgo(o.createdAt.toMillis()) : (o.date||'Bugün'), status: o.status||'Ödeme Alındı / Hazırlanıyor', _sortTs: (o.createdAt && o.createdAt.toMillis) ? o.createdAt.toMillis() : 0 };
+      });
+      rows.sort((a,b)=> b._sortTs - a._sortTs);
+      state.orders = rows.map(({_sortTs, ...rest})=>rest);
+      applyDeliveriesToOrders();
+      render();
+    }, function(err){ console.error('Sipariş geçmişi dinlenemedi:', err); });
+  loadMyDeliveriesFromFirestore();
+}
+/* Teslim edilmiş Random Hesap bilgilerini (Gmail+Şifre) "deliveries"
+   koleksiyonundan CANLI dinler ve ilgili siparişe bağlar — otomatik teslimat
+   tamamlanır tamamlanmaz sipariş kartında sayfa yenilemeden görünür. Firestore
+   güvenlik kuralları burada buyerUid==auth.uid dışındaki dokümanları zaten
+   reddetmelidir; sorgu ayrıca istemci tarafında da yalnızca kendi uid'imizle
+   filtrelenir. */
+let _myDeliveriesUnsub = null;
+function detachMyDeliveriesListener(){ if(_myDeliveriesUnsub){ _myDeliveriesUnsub(); _myDeliveriesUnsub=null; } }
+function loadMyDeliveriesFromFirestore(){
+  if(!FIREBASE_ENABLED || !fbDb || !state.uid) return;
+  detachMyDeliveriesListener();
+  _myDeliveriesUnsub = fbDb.collection('deliveries').where('buyerUid','==', state.uid)
+    .onSnapshot(function(snap){
+      const byOrder = {};
+      snap.docs.forEach(d=>{
+        const v = d.data();
+        if(v.buyerUid !== state.uid) return; // ekstra güvenlik kontrolü
+        (byOrder[v.orderId] = byOrder[v.orderId]||[]).push({ gmail:v.gmail, password:v.password, listingTitle:v.listingTitle });
+      });
+      _myDeliveriesByOrder = byOrder;
+      applyDeliveriesToOrders();
+      render();
+    }, function(err){ console.error('Teslimat bilgileri dinlenemedi:', err); });
 }
 
 /* ---------------- HESAP PASS ---------------- */
