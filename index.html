@@ -2398,6 +2398,10 @@ const AUTO_REPLY_TEXT = 'Mağazamız en kısa sürede mesajınıza cevap verecek
 /* Firebase yapılandırılmadığında (yerel demo modu) mesajlaşma verisinin sayfa
    yenilendiğinde kaybolmaması için tarayıcıda (localStorage) saklanır. */
 const LOCAL_CONV_KEY = 'nadas_local_conversations_v1';
+/* CANLI DESTEK, artık ayrı bir "Destek Merkezi" bölümü olarak DEĞİL, normal
+   Mesajlar (viewMessages) sohbet listesinin İÇİNDE, bu sabit id'ye sahip
+   sanal bir sohbet satırı olarak gösterilir — bkz. viewMessages(). */
+const LIVESUPPORT_CONV_ID = '__livesupport__';
 /* GLOBAL SOHBET: Firebase yapılandırılmadığında (yerel demo modu) tüm
    kullanıcıların ortak sohbeti tarayıcıda saklanır; aynı tarayıcıda açık
    başka sekmeler "storage" olayı ile anlık senkronize olur. */
@@ -3551,7 +3555,7 @@ function goShop(uid, name){
 /* ---------------- HEADER ---------------- */
 function renderHeader(){
   const unreadNotif = state.notifications.filter(n=>!n.read).length;
-  const unreadMsgs = (FIREBASE_ENABLED && fbDb) ? state.conversations.filter(c=>c.unread).length : 0;
+  const unreadMsgs = (FIREBASE_ENABLED && fbDb) ? state.conversations.filter(c=>c.unread).length + (state.liveSupportUnread?1:0) : 0;
   const cartCount = state.cart.reduce((s,c)=>s+c.qty,0);
   return `
   <header class="topbar">
@@ -6021,7 +6025,8 @@ function attachMessagesListener(convId){
 function selectConversation(id){
   state.activeConversation = id;
   state.msgMobileOpen = true;
-  if(FIREBASE_ENABLED && fbDb) attachMessagesListener(id);
+  if(id === LIVESUPPORT_CONV_ID){ markLiveSupportRead(); }
+  else if(FIREBASE_ENABLED && fbDb){ attachMessagesListener(id); }
   renderMainOnly();
 }
 /* Mobilde tam ekran açılan sohbetten konuşma listesine geri döner.
@@ -6478,14 +6483,23 @@ function successfulDealsCount(){
 }
 function viewMessages(){
   const isFb = FIREBASE_ENABLED && !!fbDb;
-  // Bir bildirimden ("Yeni Mesaj") gelindiyse ilgili sohbeti doğrudan açar.
+  // CANLI DESTEK sohbeti varsa (destek ekibi en az bir kez yazdıysa), gerçek
+  // sohbetlerin ÜSTÜNDE sanal bir sohbet satırı olarak listeye eklenir —
+  // Destek Merkezi'nde ayrı bir bölüm olarak GÖSTERİLMEZ, sadece burada.
+  const hasSupport = isFb && state.liveSupportChatExists;
+  // Bir bildirimden ("Yeni Mesaj" / "Destek Ekibi") gelindiyse ilgili sohbeti doğrudan açar.
   if(state.params.conv){
     state.activeConversation = state.params.conv;
     state.msgMobileOpen = true;
-    if(isFb) attachMessagesListener(state.activeConversation);
+    if(state.activeConversation === LIVESUPPORT_CONV_ID){
+      markLiveSupportRead();
+    }else if(isFb){
+      attachMessagesListener(state.activeConversation);
+    }
     state.params.conv = null;
   }
-  const list = isFb ? state.conversations : loadLocalConversations();
+  const baseList = isFb ? state.conversations : loadLocalConversations();
+  const list = hasSupport ? [{ id: LIVESUPPORT_CONV_ID, isSupport:true, unread: state.liveSupportUnread }].concat(baseList) : baseList;
   if(!list.length && !state.activeConversation){
     return `
     <div class="wrap">
@@ -6501,8 +6515,9 @@ function viewMessages(){
   // Sadece hiç aktif sohbet YOKSA listedeki ilk sohbete düşülür.
   if(!state.activeConversation && list.length){
     state.activeConversation = list[0].id;
+    if(list[0].isSupport) markLiveSupportRead();
   }
-  if(isFb && state.activeConversation && _attachedConvId !== state.activeConversation){
+  if(isFb && state.activeConversation && state.activeConversation!==LIVESUPPORT_CONV_ID && _attachedConvId !== state.activeConversation){
     attachMessagesListener(state.activeConversation);
   }
   const conv = list.find(c=>c.id===state.activeConversation);
@@ -6516,9 +6531,11 @@ function viewMessages(){
       <div class="empty-state"><div class="em-icon">${ic('mail',30)}</div><b>Sohbet açılıyor...</b></div>
     </div>`;
   }
-  const convName = isFb ? conv.otherName : conv.withName;
-  const convListing = isFb ? conv.listingTitle : conv.listing;
-  const messages = isFb ? state.activeMessages : conv.messages;
+  const isSupportConv = !!conv.isSupport;
+  if(isSupportConv && state.liveSupportUnread) markLiveSupportRead();
+  const convName = isSupportConv ? 'Destek Ekibi' : (isFb ? conv.otherName : conv.withName);
+  const convListing = isSupportConv ? 'Destek ekibiyle canlı sohbet' : (isFb ? conv.listingTitle : conv.listing);
+  const messages = isSupportConv ? state.liveSupportMessages : (isFb ? state.activeMessages : conv.messages);
   return `
   <div class="wrap">
     <div class="disp section-title" style="margin:20px 0 16px;">Mesajlar</div>
@@ -6530,14 +6547,14 @@ function viewMessages(){
         </div>
         <div class="msgs-list-scroll">
           ${list.map(c=>{
-            const cName = isFb ? c.otherName : c.withName;
-            const cListing = isFb ? c.listingTitle : c.listing;
-            const unread = isFb && c.unread;
-            const preview = convLastPreview(c, isFb);
-            const timeLbl = convTimeLabel(c, isFb);
+            const cIsSupport = !!c.isSupport;
+            const cName = cIsSupport ? 'Destek Ekibi' : (isFb ? c.otherName : c.withName);
+            const unread = cIsSupport ? c.unread : (isFb && c.unread);
+            const preview = cIsSupport ? (state.liveSupportMessages.length ? state.liveSupportMessages[state.liveSupportMessages.length-1].text : 'Destek ekibiyle sohbetin') : convLastPreview(c, isFb);
+            const timeLbl = cIsSupport ? '' : convTimeLabel(c, isFb);
             return `
             <button class="msgs-row ${conv.id===c.id?'active':''}" onclick="selectConversation('${c.id}')">
-              <div class="msgs-avatar">${esc(initials(cName))}</div>
+              <div class="msgs-avatar" ${cIsSupport?'style="background:linear-gradient(135deg,var(--blue),#6aa8ff);color:#04101f;"':''}>${cIsSupport?ic('chat',15):esc(initials(cName))}</div>
               <div class="msgs-row-body">
                 <div class="msgs-row-top">
                   <span class="msgs-row-name">${esc(cName)}</span>
@@ -6564,20 +6581,26 @@ function viewMessages(){
           </div>
           <span class="pill pill-success msgs-online">● Çevrimiçi</span>
         </div>
-        ${renderDealPanel(findDealForConversation(isFb, conv))}
+        ${isSupportConv ? '' : renderDealPanel(findDealForConversation(isFb, conv))}
         <div class="msgs-thread" id="msgThread">
           ${(messages||[]).length ? (messages||[]).map(m=>{
-            const mine = isFb ? m.mine : m.from==='me';
-            return `<div class="msg-bubble ${mine?'me':'them'}">${esc(m.text)}<div class="msg-time">${m.time||'Şimdi'}</div></div>`;
-          }).join('') : `<div class="msgs-empty-thread">Henüz mesaj yok, ilk mesajı sen gönder.</div>`}
+            const mine = isSupportConv ? !m.fromAdmin : (isFb ? m.mine : m.from==='me');
+            return `<div class="msg-bubble ${mine?'me':'them'}">${esc(m.text)}<div class="msg-time">${isSupportConv && m.fromAdmin?'Destek Ekibi · ':''}${m.time||'Şimdi'}</div></div>`;
+          }).join('') : `<div class="msgs-empty-thread">${isSupportConv?'Destek ekibi seninle sohbeti başlattı, ilk mesajını bekleyebilirsin ya da hemen yazabilirsin.':'Henüz mesaj yok, ilk mesajı sen gönder.'}</div>`}
         </div>
-        <form class="msgs-compose" onsubmit="event.preventDefault(); sendMessage(this.msg.value); this.reset();">
-          <input id="msgComposeInput" name="msg" placeholder="Mesajını yaz..." required autocomplete="off">
+        <form class="msgs-compose" onsubmit="event.preventDefault(); sendActiveMessage(this.msg.value); this.reset();">
+          <input id="msgComposeInput" name="msg" placeholder="${isSupportConv?'Destek ekibine yaz...':'Mesajını yaz...'}" required autocomplete="off">
           <button class="btn btn-primary" type="submit" aria-label="Gönder">${ic('send',17)}</button>
         </form>
       </section>
     </div>
   </div>`;
+}
+/* Aktif sohbet Canlı Destek sanal sohbetiyse destek mesajı, değilse normal
+   alıcı/satıcı mesajı olarak gönderir — bkz. viewMessages() üstteki not. */
+function sendActiveMessage(text){
+  if(state.activeConversation === LIVESUPPORT_CONV_ID){ sendLiveSupportReply(text); }
+  else{ sendMessage(text); }
 }
 /* Mesaj gönderir. Bir konuşmadaki İLK mesajsa, resmi otomatik karşılama
    cevabı aynı anda (tek seferlik) konuşmaya eklenir — bkz. AUTO_REPLY_TEXT. */
@@ -6659,7 +6682,7 @@ function listenLiveSupportChat(){
       state.liveSupportChatExists = false;
       state.liveSupportUnread = false;
     }
-    if(state.view==='support') refreshLiveSupportLive(); else renderHeaderOnly();
+    if(state.view==='messages') refreshMessagesLive(); else renderHeaderOnly();
   }, function(err){ console.error('Destek sohbeti dinlenemedi:', err); });
 }
 function attachLiveSupportMessages(uid){
@@ -6680,10 +6703,10 @@ function attachLiveSupportMessages(uid){
       // (pushNotification zaten Firestore'a bildirim yazdığında watchNotifications bunu yakalar;
       // burada ayrıca sohbet ekranını da anında günceller).
       _liveSupportInitialLoadDone = true;
-      if(state.view==='support') refreshLiveSupportLive();
+      if(state.view==='messages') refreshMessagesLive();
     }, function(err){ console.error('Destek mesajları dinlenemedi:', err); });
 }
-/* Kullanıcı Destek Merkezi > Canlı Destek bölümünü görüntülediğinde,
+/* Kullanıcı Mesajlar sayfasında Canlı Destek sohbetini görüntülediğinde,
    destek ekibinden gelen okunmamış mesajları "okundu" işaretler. */
 function markLiveSupportRead(){
   if(!FIREBASE_ENABLED || !fbDb || !state.uid || !state.liveSupportUnread) return;
@@ -6706,22 +6729,6 @@ async function sendLiveSupportReply(text){
     });
     pushAdminNotification({ type:'livesupport', message:text, refId:state.uid });
   }catch(err){ console.error('Destek mesajı gönderilemedi:', err); toast('Mesaj gönderilemedi','error'); }
-}
-/* Sohbet gövdesini (mesaj balonları) DOM'dan input'a hiç dokunmadan günceller
-   — bkz. refreshMessagesLive() açıklaması, aynı desen burada da uygulanır. */
-function refreshLiveSupportLive(){
-  if(state.view!=='support') return;
-  const thread = document.getElementById('liveSupportThread');
-  if(!thread){ renderMainOnly(); return; }
-  const tmp = document.createElement('div');
-  tmp.innerHTML = currentViewHtml();
-  const neu = tmp.querySelector('#liveSupportThread');
-  const badge = tmp.querySelector('#liveSupportBadge');
-  if(neu) thread.innerHTML = neu.innerHTML;
-  const curBadge = document.getElementById('liveSupportBadge');
-  if(curBadge && badge) curBadge.outerHTML = badge.outerHTML;
-  else if(curBadge && !badge) curBadge.remove();
-  thread.scrollTop = thread.scrollHeight;
 }
 
 /* ---- Admin tarafı ---- */
@@ -6888,7 +6895,7 @@ async function adminSendSupportMessage(text){
     pushNotification(uid, {
       type:'support_chat', title:'Destek Ekibi',
       text: text.length>120 ? text.slice(0,120)+'…' : text,
-      link:{view:'support', params:{}},
+      link:{view:'messages', params:{conv:LIVESUPPORT_CONV_ID}},
     });
   }catch(err){ console.error('Destek mesajı gönderilemedi:', err); toast('Mesaj gönderilemedi: '+authErrorMessage(err),'error'); }
 }
@@ -7710,7 +7717,6 @@ const FAQS = [
   ['İlan verirken ücret alınıyor mu?','İlan vermek tamamen ücretsizdir. Sadece başarılı satışlarda düşük oranlı bir hizmet bedeli uygulanır.'],
 ];
 function viewSupport(){
-  if(state.liveSupportChatExists && state.liveSupportUnread) markLiveSupportRead();
   return `
   <div class="wrap">
     <div class="disp section-title" style="margin:20px 0 4px;">Destek Merkezi</div>
@@ -7718,28 +7724,10 @@ function viewSupport(){
     <div class="panel-layout">
       <aside class="panel-nav">
         <button class="panel-nav-item active">${ic('help',15)} Sık Sorulan Sorular</button>
-        ${state.liveSupportChatExists?`<button class="panel-nav-item" onclick="document.getElementById('liveSupportSection').scrollIntoView({behavior:'smooth'})">${ic('chat',15)} Canlı Destek${state.liveSupportUnread?` <span class="pill pill-danger" style="margin-left:4px;">●</span>`:''}</button>`:''}
         <button class="panel-nav-item" onclick="document.getElementById('ticketForm').scrollIntoView({behavior:'smooth'})">${ic('ticket',15)} Destek Talebi Oluştur</button>
         <button class="panel-nav-item" onclick="document.getElementById('myTickets').scrollIntoView({behavior:'smooth'})">${ic('chat',15)} Taleplerim</button>
       </aside>
       <div class="panel-content">
-        ${state.liveSupportChatExists?`
-        <div id="liveSupportSection">
-          <h2 class="disp" style="font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">${ic('chat',16)} Canlı Destek <span id="liveSupportBadge">${state.liveSupportUnread?`<span class="pill pill-danger">Yeni Mesaj</span>`:''}</span></h2>
-          <p class="hint" style="margin-bottom:12px;">Destek ekibimizle olan canlı sohbetin — yazdığın mesajlar anında ekibimize ulaşır.</p>
-          <div class="msgs-shell" style="height:420px;max-height:60vh;border-radius:12px;">
-            <section class="msgs-chat" style="width:100%;">
-              <div class="msgs-thread" id="liveSupportThread">
-                ${state.liveSupportMessages.length ? state.liveSupportMessages.map(m=>`<div class="msg-bubble ${m.fromAdmin?'them':'me'}">${esc(m.text)}<div class="msg-time">${m.fromAdmin?'Destek Ekibi · ':''}${m.time}</div></div>`).join('') : `<div class="msgs-empty-thread">Destek ekibi seninle sohbeti başlattı, ilk mesajını bekleyebilirsin ya da hemen yazabilirsin.</div>`}
-              </div>
-              <form class="msgs-compose" onsubmit="event.preventDefault(); sendLiveSupportReply(this.msg.value); this.reset();">
-                <input id="liveSupportComposeInput" name="msg" placeholder="Destek ekibine yaz..." required autocomplete="off">
-                <button class="btn btn-primary" type="submit" aria-label="Gönder">${ic('send',17)}</button>
-              </form>
-            </section>
-          </div>
-        </div>
-        <div class="divider"></div>` : ''}
         <div>
           ${FAQS.map((f,i)=>`
             <div class="faq-item" id="faq${i}">
