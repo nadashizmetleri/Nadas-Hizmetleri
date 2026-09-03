@@ -2450,6 +2450,7 @@ const state = {
   // CANLI DESTEK — admin tarafı: sohbet listesi + o an açık olan sohbet (bkz. watchAdminSupportChats)
   adminSupportChats: [],
   adminActiveSupportChat: null,
+  adminActiveSupportChatMeta: null,
   adminSupportMessages: [],
   accountTab:'profil',
   adminTab:'kullanicilar',
@@ -2488,6 +2489,7 @@ function resetPersonalState(){
   detachLiveSupportChat();
   state.adminSupportChats = [];
   state.adminActiveSupportChat = null;
+  state.adminActiveSupportChatMeta = null;
   state.adminSupportMessages = [];
   detachAdminSupportChats();
   detachAdminSupportMessages();
@@ -6743,9 +6745,14 @@ function watchAdminSupportChats(){
     }, function(err){ console.error('Destek sohbetleri dinlenemedi:', err); });
 }
 /* Var olan bir sohbeti listeden seçip açar. */
-function adminOpenSupportChat(uid){
+function adminOpenSupportChat(uid, meta){
   if(!uid) return;
   state.adminActiveSupportChat = uid;
+  // meta (uid/userEmail/userName), sohbet daha yeni oluşturulduğunda ve
+  // watchAdminSupportChats() dinleyicisi henüz Firestore'dan bu dokümanı
+  // yakalamamışken (kısa bir gecikme olabiliyor) yazma kutusunun hemen
+  // görünmesi için geçici bir yedek olarak kullanılır — bkz. adminSupportChatContent().
+  state.adminActiveSupportChatMeta = meta || null;
   attachAdminSupportMessages(uid);
   renderMainOnly();
 }
@@ -6768,33 +6775,58 @@ function attachAdminSupportMessages(uid){
     }, function(err){ console.error('Destek mesajları dinlenemedi:', err); });
   fbDb.collection('supportChats').doc(uid).update({ unreadForAdmin:false }).catch(function(){});
 }
-/* Admin panelinde, girilen e-posta adresine ait kullanıcıyla sohbeti bulur
-   (yoksa oluşturur) ve açar. adminSendBalance/adminGrantPass ile birebir aynı
-   "e-posta → kullanıcı dokümanı" arama desenini kullanır. */
+/* Admin panelinde, girilen değere (e-posta VEYA mağaza adı) ait kullanıcıyla
+   sohbeti bulur (yoksa oluşturur) ve açar. Girilen değer "@" içeriyorsa
+   e-posta olarak aynen adminSendBalance/adminGrantPass'teki gibi TEK doküman
+   sorgusuyla (where('email','==',...)) aranır. İçermiyorsa mağaza adı olarak
+   yorumlanır: mağaza adları Firestore'da tam/duyarlı halleriyle saklandığı ve
+   üzerinde ayrı bir "küçük harf" arama alanı bulunmadığı için, tüm
+   kullanıcılar çekilip shopName istemci tarafında büyük/küçük harf duyarsız
+   (tr locale) şekilde karşılaştırılır — bu koleksiyon zaten "users" okuma
+   kuralı (isSignedIn()) ile açık, aynı desen duyuru gönderiminde de kullanılıyor. */
 async function adminStartSupportChatByEmail(){
   const input = document.getElementById('liveSupportEmailInput');
-  const email = ((input && input.value)||'').trim().toLowerCase();
-  if(!email){ toast('Lütfen bir e-posta gir','error'); return; }
+  const query = ((input && input.value)||'').trim();
+  if(!query){ toast('Lütfen bir e-posta ya da mağaza adı gir','error'); return; }
   if(!FIREBASE_ENABLED || !fbDb){ toast('Bu özellik Firebase yapılandırması gerektirir.','error'); return; }
   const btn = document.getElementById('liveSupportStartBtn');
   if(btn){ btn.disabled=true; btn.textContent='Aranıyor...'; }
   try{
-    const snap = await fbDb.collection('users').where('email','==',email).limit(1).get();
-    if(snap.empty){ toast('Bu e-postaya ait kullanıcı bulunamadı','error'); return; }
-    const doc = snap.docs[0];
+    let doc = null;
+    if(query.includes('@')){
+      const email = query.toLowerCase();
+      const snap = await fbDb.collection('users').where('email','==',email).limit(1).get();
+      if(!snap.empty) doc = snap.docs[0];
+    }else{
+      const needle = query.toLocaleLowerCase('tr');
+      const usersSnap = await fbDb.collection('users').get();
+      const matches = usersSnap.docs.filter(d=>{
+        const shop = (d.data().shopName||'').trim();
+        return shop && shop.toLocaleLowerCase('tr').includes(needle);
+      });
+      if(matches.length > 1){
+        toast(`"${query}" için ${matches.length} eşleşen mağaza bulundu — tam mağaza adını yaz ya da e-posta ile ara`,'error');
+        if(btn){ btn.disabled=false; btn.textContent='Sohbeti Aç / Başlat'; }
+        return;
+      }
+      doc = matches[0] || null;
+    }
+    if(!doc){ toast('Bu e-posta/mağaza adına ait kullanıcı bulunamadı','error'); if(btn){ btn.disabled=false; btn.textContent='Sohbeti Aç / Başlat'; } return; }
     const uid = doc.id;
-    const userName = doc.data().name || email;
+    const data = doc.data() || {};
+    const userEmail = data.email || '';
+    const userName = data.name || userEmail || query;
     const chatRef = fbDb.collection('supportChats').doc(uid);
     const chatSnap = await chatRef.get();
     if(!chatSnap.exists){
       await chatRef.set({
-        uid:uid, userEmail:email, userName:userName, lastMessage:'', unreadForUser:false, unreadForAdmin:false,
+        uid:uid, userEmail:userEmail, userName:userName, lastMessage:'', unreadForUser:false, unreadForAdmin:false,
         lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
     }
     if(input) input.value='';
-    adminOpenSupportChat(uid);
+    adminOpenSupportChat(uid, {uid, userEmail, userName});
     toast(`${userName} ile canlı destek sohbeti açıldı`,'success');
   }catch(err){ console.error('Sohbet başlatılamadı:', err); toast('Sohbet başlatılamadı: '+authErrorMessage(err),'error'); }
   if(btn){ btn.disabled=false; btn.textContent='Sohbeti Aç / Başlat'; }
@@ -8089,13 +8121,20 @@ function adminTabContent(tab){
 function adminSupportChatContent(){
   const list = (state.adminSupportChats||[]);
   const activeUid = state.adminActiveSupportChat;
-  const active = list.find(c=>c.uid===activeUid) || null;
+  // Sohbet az önce e-posta ile başlatıldıysa, Firestore'daki canlı liste
+  // dinleyicisi (watchAdminSupportChats) yeni dokümanı henüz yakalamamış
+  // olabilir — bu durumda listede bulunamasa bile adminActiveSupportChatMeta
+  // yedeğini kullanarak yazma kutusunun hemen görünmesini sağlıyoruz.
+  const metaFallback = (state.adminActiveSupportChatMeta && state.adminActiveSupportChatMeta.uid===activeUid)
+    ? Object.assign({lastMessage:'', lastMessageAt:0, unreadForAdmin:false}, state.adminActiveSupportChatMeta)
+    : null;
+  const active = list.find(c=>c.uid===activeUid) || metaFallback;
   return `
   <div class="msgs-shell" id="adminSupportShell" style="height:560px;max-height:70vh;">
     <aside class="msgs-list" style="width:100%;">
       <div class="msgs-list-head"><b>${ic('search',13)} Yeni Sohbet</b></div>
       <div style="padding:12px 12px 4px;display:flex;gap:6px;">
-        <input id="liveSupportEmailInput" type="email" placeholder="kullanici@eposta.com" style="flex:1;min-width:0;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--hi);font-size:12.5px;" onkeydown="if(event.key==='Enter'){event.preventDefault();adminStartSupportChatByEmail();}">
+        <input id="liveSupportEmailInput" type="text" placeholder="kullanici@eposta.com ya da mağaza adı" style="flex:1;min-width:0;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--hi);font-size:12.5px;" onkeydown="if(event.key==='Enter'){event.preventDefault();adminStartSupportChatByEmail();}">
       </div>
       <div style="padding:6px 12px 12px;">
         <button class="btn btn-primary btn-sm btn-block" id="liveSupportStartBtn" onclick="adminStartSupportChatByEmail()">${ic('send',13)} Sohbeti Aç / Başlat</button>
