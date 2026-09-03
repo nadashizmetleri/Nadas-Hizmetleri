@@ -2453,6 +2453,7 @@ const state = {
   adminActiveSupportChatMeta: null,
   adminSupportMessages: [],
   adminSupportSearchResults: [], // mağaza adıyla birden fazla eşleşme olduğunda tıklanabilir sonuç listesi
+  adminSupportMobileOpen: false, // 859px altında liste<->sohbet tam ekran geçişi (bkz. msgMobileOpen deseni)
   accountTab:'profil',
   adminTab:'kullanicilar',
   hasPass:false,
@@ -2493,6 +2494,7 @@ function resetPersonalState(){
   state.adminActiveSupportChatMeta = null;
   state.adminSupportMessages = [];
   state.adminSupportSearchResults = [];
+  state.adminSupportMobileOpen = false;
   detachAdminSupportChats();
   detachAdminSupportMessages();
   state.favorites = new Set();
@@ -6755,7 +6757,17 @@ function adminOpenSupportChat(uid, meta){
   // yakalamamışken (kısa bir gecikme olabiliyor) yazma kutusunun hemen
   // görünmesi için geçici bir yedek olarak kullanılır — bkz. adminSupportChatContent().
   state.adminActiveSupportChatMeta = meta || null;
+  // 859px altı (mobil) ekranlarda liste ve sohbet paneli aynı anda
+  // gösterilmiyor — .msgs-shell.chat-open olmadan .msgs-chat CSS'te
+  // display:none kalıyor (bkz. viewMessages'daki msgMobileOpen deseni).
+  // Bir sohbet açıldığında bunu true yapmazsak, sohbet state'te "açık"
+  // olsa da mesaj yazma kutusu görsel olarak hiç görünmez.
+  state.adminSupportMobileOpen = true;
   attachAdminSupportMessages(uid);
+  renderMainOnly();
+}
+function adminBackToSupportList(){
+  state.adminSupportMobileOpen = false;
   renderMainOnly();
 }
 function attachAdminSupportMessages(uid){
@@ -8156,7 +8168,7 @@ function adminSupportChatContent(){
     : null;
   const active = list.find(c=>c.uid===activeUid) || metaFallback;
   return `
-  <div class="msgs-shell" id="adminSupportShell" style="height:560px;max-height:70vh;">
+  <div class="msgs-shell ${state.adminSupportMobileOpen?'chat-open':''}" id="adminSupportShell" style="height:560px;max-height:70vh;">
     <aside class="msgs-list" style="width:100%;">
       <div class="msgs-list-head"><b>${ic('search',13)} Yeni Sohbet</b></div>
       <div style="padding:12px 12px 4px;display:flex;gap:6px;">
@@ -8200,6 +8212,7 @@ function adminSupportChatContent(){
     <section class="msgs-chat">
       ${active ? `
       <div class="msgs-chat-head">
+        <button class="msgs-back-btn" onclick="adminBackToSupportList()" aria-label="Sohbetlere dön">${ic('arrowLeft',18)}</button>
         <div class="msgs-chat-id">
           <div class="msgs-avatar">${esc(initials(active.userName))}</div>
           <div style="min-width:0;">
