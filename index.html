@@ -654,6 +654,7 @@ select.sortsel{background:var(--panel);border:1px solid var(--border);border-rad
 .pill-danger{background:rgba(247,107,107,.14);color:var(--danger);}
 .pill-blue{background:var(--blue-soft);color:#7db2ff;}
 .pill-orange{background:var(--orange-soft);color:var(--orange);}
+.pill-muted{background:var(--elevated);color:var(--low);}
 
 /* ---------- WIZARD (İlan Ver) ---------- */
 .wizard{max-width:760px;margin:20px auto 0;}
@@ -2467,6 +2468,7 @@ const state = {
   catMenuQuery:'',
   catMenuActiveCat:'',
   homeTab:'vitrin',
+  otherUserLastActiveAt: 0,
 };
 /* Bir sonraki kullanıcının önceki oturumdan kalma sahte/kişisel veri görmemesi için
    giriş/çıkışta kişisel alanları sıfırlar. */
@@ -2493,6 +2495,7 @@ function resetPersonalState(){
   state.liveSupportUnread = false;
   state.liveSupportMessages = [];
   detachLiveSupportChat();
+  detachOtherUserPresence();
   state.adminSupportChats = [];
   state.adminActiveSupportChat = null;
   state.adminActiveSupportChatMeta = null;
@@ -2847,6 +2850,7 @@ function watchAuthState(){
       watchDealTransactions();
       listenGlobalChat();
       listenLiveSupportChat();
+      startPresenceHeartbeat();
       if(state.isAdmin){ loadPaymentRequestsFromFirestore(); loadGlobalTransactionsFromFirestore(); loadSupportTicketsFromFirestore(); loadAnnouncementsForAdmin(); watchAdminInboxNotifications(); watchAdminSupportChats(); }
       render();
     }else{
@@ -2864,6 +2868,8 @@ function watchAuthState(){
       detachLiveSupportChat();
       detachAdminSupportChats();
       detachAdminSupportMessages();
+      stopPresenceHeartbeat();
+      detachOtherUserPresence();
       _myDeliveriesByOrder = {};
       resetPersonalState();
       state.uid=null; state.loggedIn=false; state.isAdmin=false; state.userName=''; state.userEmail='';
@@ -4497,6 +4503,16 @@ function refreshMessagesLive(){
     if(!cur || !neu) return;
     if(mode==='html') cur.innerHTML = neu.innerHTML; else cur.textContent = neu.textContent;
   });
+  // Çevrimiçi/çevrimdışı rozeti class'ı da (renk) değiştiği için ayrıca
+  // outerHTML ile değiştirilir — yukarıdaki 'text' modu sadece metni günceller.
+  const curOnline = shell.querySelector('#msgsOnlineStatus');
+  const neuOnline = newShell.querySelector('#msgsOnlineStatus');
+  if(curOnline && neuOnline) curOnline.outerHTML = neuOnline.outerHTML;
+  else if(curOnline && !neuOnline) curOnline.remove();
+  else if(!curOnline && neuOnline){
+    const head = shell.querySelector('.msgs-chat-head');
+    if(head) head.insertAdjacentHTML('beforeend', neuOnline.outerHTML);
+  }
   scrollMsgThreadToBottom();
 }
 /* Sohbet balonları listesi güncellendiğinde (yeni mesaj / sohbet değişimi)
@@ -6009,6 +6025,8 @@ function attachMessagesListener(convId){
   if(_convMsgUnsub) _convMsgUnsub();
   _attachedConvId = convId;
   state.activeMessages = [];
+  const convMeta = (state.conversations||[]).find(c=>c.id===convId);
+  attachOtherUserPresence(convMeta ? convMeta.otherUid : null);
   _convMsgUnsub = fbDb.collection('conversations').doc(convId).collection('messages')
     .orderBy('createdAt','asc')
     .onSnapshot(function(snap){
@@ -6025,7 +6043,7 @@ function attachMessagesListener(convId){
 function selectConversation(id){
   state.activeConversation = id;
   state.msgMobileOpen = true;
-  if(id === LIVESUPPORT_CONV_ID){ markLiveSupportRead(); }
+  if(id === LIVESUPPORT_CONV_ID){ markLiveSupportRead(); detachOtherUserPresence(); }
   else if(FIREBASE_ENABLED && fbDb){ attachMessagesListener(id); }
   renderMainOnly();
 }
@@ -6516,6 +6534,7 @@ function viewMessages(){
   if(!state.activeConversation && list.length){
     state.activeConversation = list[0].id;
     if(list[0].isSupport) markLiveSupportRead();
+    if(!isFb || list[0].isSupport) detachOtherUserPresence();
   }
   if(isFb && state.activeConversation && state.activeConversation!==LIVESUPPORT_CONV_ID && _attachedConvId !== state.activeConversation){
     attachMessagesListener(state.activeConversation);
@@ -6579,7 +6598,7 @@ function viewMessages(){
               <div class="msgs-chat-sub">${esc(convListing||'')}</div>
             </div>
           </div>
-          <span class="pill pill-success msgs-online">● Çevrimiçi</span>
+          ${(!isFb || isSupportConv) ? '' : `<span class="pill ${isOtherUserOnline()?'pill-success':'pill-muted'} msgs-online" id="msgsOnlineStatus">${isOtherUserOnline()?'● Çevrimiçi':'Çevrimdışı'}</span>`}
         </div>
         ${isSupportConv ? '' : renderDealPanel(findDealForConversation(isFb, conv))}
         <div class="msgs-thread" id="msgThread">
@@ -6602,6 +6621,64 @@ function sendActiveMessage(text){
   if(state.activeConversation === LIVESUPPORT_CONV_ID){ sendLiveSupportReply(text); }
   else{ sendMessage(text); }
 }
+/* ================= ÇEVRİMİÇİ DURUMU (PRESENCE) =================
+   Mesajlar ekranındaki "● Çevrimiçi" etiketi eskiden HER sohbet için sabit
+   olarak yazılıyordu — yani karşı taraf uzun süredir uygulamayı kapatmış
+   olsa bile "aktif" görünüyordu. Bunu düzeltmek için basit bir "heartbeat"
+   (nabız) sistemi kuruluyor: giriş yapmış her kullanıcı belirli aralıklarla
+   kendi users/{uid} dokümanına bir lastActiveAt zaman damgası yazar. Bir
+   sohbet açıldığında karşı tarafın dokümanı dinlenir; son nabzı belirlenen
+   eşiğin (PRESENCE_ONLINE_THRESHOLD_MS) içindeyse "Çevrimiçi", değilse
+   "Çevrimdışı" gösterilir. */
+const PRESENCE_HEARTBEAT_MS = 25000;
+const PRESENCE_ONLINE_THRESHOLD_MS = 70000;
+let _presenceHeartbeatTimer = null;
+function sendPresenceHeartbeat(){
+  if(!FIREBASE_ENABLED || !fbDb || !state.uid) return;
+  fbDb.collection('users').doc(state.uid).update({ lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(function(){});
+}
+function startPresenceHeartbeat(){
+  stopPresenceHeartbeat();
+  sendPresenceHeartbeat();
+  _presenceHeartbeatTimer = setInterval(sendPresenceHeartbeat, PRESENCE_HEARTBEAT_MS);
+}
+function stopPresenceHeartbeat(){
+  if(_presenceHeartbeatTimer){ clearInterval(_presenceHeartbeatTimer); _presenceHeartbeatTimer=null; }
+}
+// Sekme tekrar öne geldiğinde (ör. kullanıcı başka bir sekmeden dönünce)
+// nabzı hemen tazeler — bir sonraki periyodik nabzı beklemeye gerek kalmaz.
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible') sendPresenceHeartbeat();
+});
+/* ---- Açık olan sohbetteki karşı tarafın çevrimiçi durumunu dinler ---- */
+let _otherPresenceUnsub = null;
+let _otherPresenceUid = null;
+function detachOtherUserPresence(){
+  if(_otherPresenceUnsub){ _otherPresenceUnsub(); _otherPresenceUnsub=null; }
+  _otherPresenceUid = null;
+  state.otherUserLastActiveAt = 0;
+}
+function attachOtherUserPresence(uid){
+  if(!FIREBASE_ENABLED || !fbDb || !uid){ detachOtherUserPresence(); return; }
+  if(_otherPresenceUid === uid) return;
+  detachOtherUserPresence();
+  _otherPresenceUid = uid;
+  _otherPresenceUnsub = fbDb.collection('users').doc(uid).onSnapshot(function(snap){
+    const d = snap.data()||{};
+    state.otherUserLastActiveAt = d.lastActiveAt && d.lastActiveAt.toMillis ? d.lastActiveAt.toMillis() : 0;
+    if(state.view==='messages') refreshMessagesLive();
+  }, function(){ state.otherUserLastActiveAt = 0; });
+}
+function isOtherUserOnline(){
+  return !!state.otherUserLastActiveAt && (Date.now() - state.otherUserLastActiveAt) < PRESENCE_ONLINE_THRESHOLD_MS;
+}
+/* Karşı taraf sekmeyi/uygulamayı kapattığında yeni bir Firestore güncellemesi
+   GELMEZ — bu yüzden eşik süresi dolduğunda "Çevrimdışı"ya kendiliğinden
+   geçebilmek için, açık sohbet varken belirli aralıklarla ekranı yeniden
+   değerlendirip günceller. */
+setInterval(function(){
+  if(state.view==='messages' && state.activeConversation && state.activeConversation!==LIVESUPPORT_CONV_ID) refreshMessagesLive();
+}, 30000);
 /* Mesaj gönderir. Bir konuşmadaki İLK mesajsa, resmi otomatik karşılama
    cevabı aynı anda (tek seferlik) konuşmaya eklenir — bkz. AUTO_REPLY_TEXT. */
 async function sendMessage(text){
