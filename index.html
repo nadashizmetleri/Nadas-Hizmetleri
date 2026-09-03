@@ -2452,6 +2452,7 @@ const state = {
   adminActiveSupportChat: null,
   adminActiveSupportChatMeta: null,
   adminSupportMessages: [],
+  adminSupportSearchResults: [], // mağaza adıyla birden fazla eşleşme olduğunda tıklanabilir sonuç listesi
   accountTab:'profil',
   adminTab:'kullanicilar',
   hasPass:false,
@@ -2491,6 +2492,7 @@ function resetPersonalState(){
   state.adminActiveSupportChat = null;
   state.adminActiveSupportChatMeta = null;
   state.adminSupportMessages = [];
+  state.adminSupportSearchResults = [];
   detachAdminSupportChats();
   detachAdminSupportMessages();
   state.favorites = new Set();
@@ -6775,6 +6777,31 @@ function attachAdminSupportMessages(uid){
     }, function(err){ console.error('Destek mesajları dinlenemedi:', err); });
   fbDb.collection('supportChats').doc(uid).update({ unreadForAdmin:false }).catch(function(){});
 }
+/* Bir uid için (yoksa oluşturarak) destek sohbetini açar — hem tekil arama
+   sonucunda hem de çoklu eşleşme listesinden bir mağazaya tıklandığında
+   kullanılan ortak fonksiyon. */
+async function adminOpenOrCreateSupportChatFor(uid, userEmail, userName){
+  const chatRef = fbDb.collection('supportChats').doc(uid);
+  const chatSnap = await chatRef.get();
+  if(!chatSnap.exists){
+    await chatRef.set({
+      uid:uid, userEmail:userEmail||'', userName:userName||userEmail||'Kullanıcı',
+      lastMessage:'', unreadForUser:false, unreadForAdmin:false,
+      lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+  state.adminSupportSearchResults = [];
+  adminOpenSupportChat(uid, {uid, userEmail:userEmail||'', userName:userName||userEmail||'Kullanıcı'});
+  toast(`${userName||userEmail} ile canlı destek sohbeti açıldı`,'success');
+}
+/* Çoklu eşleşme listesinden bir mağazaya tıklandığında çağrılır. */
+async function adminPickSupportSearchResult(uid){
+  const match = (state.adminSupportSearchResults||[]).find(m=>m.uid===uid);
+  if(!match) return;
+  try{ await adminOpenOrCreateSupportChatFor(match.uid, match.userEmail, match.userName); render(); }
+  catch(err){ console.error('Sohbet başlatılamadı:', err); toast('Sohbet başlatılamadı: '+authErrorMessage(err),'error'); }
+}
 /* Admin panelinde, girilen değere (e-posta VEYA mağaza adı) ait kullanıcıyla
    sohbeti bulur (yoksa oluşturur) ve açar. Girilen değer "@" içeriyorsa
    e-posta olarak aynen adminSendBalance/adminGrantPass'teki gibi TEK doküman
@@ -6783,7 +6810,10 @@ function attachAdminSupportMessages(uid){
    üzerinde ayrı bir "küçük harf" arama alanı bulunmadığı için, tüm
    kullanıcılar çekilip shopName istemci tarafında büyük/küçük harf duyarsız
    (tr locale) şekilde karşılaştırılır — bu koleksiyon zaten "users" okuma
-   kuralı (isSignedIn()) ile açık, aynı desen duyuru gönderiminde de kullanılıyor. */
+   kuralı (isSignedIn()) ile açık, aynı desen duyuru gönderiminde de kullanılıyor.
+   Birden fazla mağaza eşleşirse artık sadece uyarı vermekle kalmıyor,
+   state.adminSupportSearchResults'a yazıp gerçek TIKLANABİLİR bir liste
+   gösteriyor (bkz. adminSupportChatContent). */
 async function adminStartSupportChatByEmail(){
   const input = document.getElementById('liveSupportEmailInput');
   const query = ((input && input.value)||'').trim();
@@ -6791,6 +6821,7 @@ async function adminStartSupportChatByEmail(){
   if(!FIREBASE_ENABLED || !fbDb){ toast('Bu özellik Firebase yapılandırması gerektirir.','error'); return; }
   const btn = document.getElementById('liveSupportStartBtn');
   if(btn){ btn.disabled=true; btn.textContent='Aranıyor...'; }
+  state.adminSupportSearchResults = [];
   try{
     let doc = null;
     if(query.includes('@')){
@@ -6805,8 +6836,13 @@ async function adminStartSupportChatByEmail(){
         return shop && shop.toLocaleLowerCase('tr').includes(needle);
       });
       if(matches.length > 1){
-        toast(`"${query}" için ${matches.length} eşleşen mağaza bulundu — tam mağaza adını yaz ya da e-posta ile ara`,'error');
+        state.adminSupportSearchResults = matches.map(d=>{
+          const data = d.data()||{};
+          return { uid:d.id, userEmail:data.email||'', userName:data.name||data.email||'Kullanıcı', shopName:(data.shopName||'').trim() };
+        });
+        toast(`"${query}" için ${matches.length} eşleşen mağaza bulundu — aşağıdan birini seç`,'error');
         if(btn){ btn.disabled=false; btn.textContent='Sohbeti Aç / Başlat'; }
+        render();
         return;
       }
       doc = matches[0] || null;
@@ -6816,18 +6852,8 @@ async function adminStartSupportChatByEmail(){
     const data = doc.data() || {};
     const userEmail = data.email || '';
     const userName = data.name || userEmail || query;
-    const chatRef = fbDb.collection('supportChats').doc(uid);
-    const chatSnap = await chatRef.get();
-    if(!chatSnap.exists){
-      await chatRef.set({
-        uid:uid, userEmail:userEmail, userName:userName, lastMessage:'', unreadForUser:false, unreadForAdmin:false,
-        lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+    await adminOpenOrCreateSupportChatFor(uid, userEmail, userName);
     if(input) input.value='';
-    adminOpenSupportChat(uid, {uid, userEmail, userName});
-    toast(`${userName} ile canlı destek sohbeti açıldı`,'success');
   }catch(err){ console.error('Sohbet başlatılamadı:', err); toast('Sohbet başlatılamadı: '+authErrorMessage(err),'error'); }
   if(btn){ btn.disabled=false; btn.textContent='Sohbeti Aç / Başlat'; }
   render();
@@ -8139,6 +8165,20 @@ function adminSupportChatContent(){
       <div style="padding:6px 12px 12px;">
         <button class="btn btn-primary btn-sm btn-block" id="liveSupportStartBtn" onclick="adminStartSupportChatByEmail()">${ic('send',13)} Sohbeti Aç / Başlat</button>
       </div>
+      ${(state.adminSupportSearchResults||[]).length ? `
+      <div style="padding:0 12px 12px;">
+        <div class="small text-mid" style="margin-bottom:6px;">${state.adminSupportSearchResults.length} eşleşme bulundu, birini seç:</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${state.adminSupportSearchResults.map(m=>`
+            <button class="msgs-row" style="border:1px solid var(--border);border-radius:10px;" onclick="adminPickSupportSearchResult('${m.uid}')">
+              <div class="msgs-avatar">${esc(initials(m.shopName||m.userName))}</div>
+              <div class="msgs-row-body">
+                <div class="msgs-row-top"><span class="msgs-row-name">${esc(m.shopName||m.userName)}</span></div>
+                <div class="msgs-row-preview"><span>${esc(m.userEmail||m.userName)}</span></div>
+              </div>
+            </button>`).join('')}
+        </div>
+      </div>` : ''}
       <div class="msgs-list-head" style="border-top:1px solid var(--border-soft);"><b>Sohbetler</b><span class="msgs-count">${list.length}</span></div>
       <div class="msgs-list-scroll admin-support-list">
         ${list.length ? list.map(c=>`
