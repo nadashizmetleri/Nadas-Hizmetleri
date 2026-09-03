@@ -833,6 +833,9 @@ select.sortsel{background:var(--panel);border:1px solid var(--border);border-rad
 .msgs-chat-id{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
 .msgs-chat-id .msgs-avatar{width:36px;height:36px;font-size:13px;border-radius:10px;}
 .msgs-chat-name{font-size:13.2px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.msgs-avatar-btn{cursor:pointer;flex-shrink:0;}
+.msgs-chat-name-link{cursor:pointer;}
+.msgs-chat-name-link:hover{text-decoration:underline;}
 .msgs-chat-sub{font-size:10.8px;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .msgs-online{flex-shrink:0;}
 .msgs-thread{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;overscroll-behavior:contain;}
@@ -936,8 +939,12 @@ select.sortsel{background:var(--panel);border:1px solid var(--border);border-rad
 .gchat-msg{display:flex;gap:8px;align-items:flex-end;max-width:100%;}
 .gchat-msg.me{flex-direction:row-reverse;}
 .gchat-avatar{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--blue),#6aa8ff);color:#04101f;font-weight:700;font-size:10px;font-family:'Space Grotesk';}
+.gchat-avatar-btn{flex-shrink:0;cursor:pointer;}
+.gchat-avatar-btn:hover .gchat-avatar{filter:brightness(1.12);}
 .gchat-bubble{max-width:100%;}
 .gchat-name{font-size:10.5px;font-weight:700;color:var(--blue);margin-bottom:2px;}
+.gchat-name-link{cursor:pointer;}
+.gchat-name-link:hover{text-decoration:underline;}
 .gchat-msg.me .gchat-bubble{margin-left:34px;}
 .gchat-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border-soft);flex-shrink:0;background:var(--panel-2);}
 .gchat-compose input{flex:1;min-width:0;background:var(--elevated);border:1px solid var(--border);border-radius:12px;padding:10px 13px;color:var(--hi);font-size:13px;}
@@ -2469,6 +2476,7 @@ const state = {
   catMenuActiveCat:'',
   homeTab:'vitrin',
   otherUserLastActiveAt: 0,
+  otherUserPhotoURL: '',
 };
 /* Bir sonraki kullanıcının önceki oturumdan kalma sahte/kişisel veri görmemesi için
    giriş/çıkışta kişisel alanları sıfırlar. */
@@ -4493,8 +4501,7 @@ function refreshMessagesLive(){
   [
     ['.msgs-count','text'],
     ['.msgs-list-scroll','html'],
-    ['.msgs-chat-name','text'],
-    ['.msgs-chat-sub','text'],
+    ['.msgs-chat-id','html'],
     ['#msgThread','html'],
   ].forEach(function(pair){
     const sel = pair[0], mode = pair[1];
@@ -6555,6 +6562,13 @@ function viewMessages(){
   const convName = isSupportConv ? 'Destek Ekibi' : (isFb ? conv.otherName : conv.withName);
   const convListing = isSupportConv ? 'Destek ekibiyle canlı sohbet' : (isFb ? conv.listingTitle : conv.listing);
   const messages = isSupportConv ? state.liveSupportMessages : (isFb ? state.activeMessages : conv.messages);
+  // Sohbet başlığındaki isim/foto, destek sohbeti ve yerel demo modu hariç,
+  // karşı tarafın gerçek profil fotoğrafını (varsa) gösterir ve tıklanınca
+  // mağaza profiline götürür — bkz. attachOtherUserPresence() (aynı
+  // dinleyici çevrimiçi durumuyla birlikte photoURL'i de taşır).
+  const canLinkProfile = isFb && !isSupportConv && !!conv.otherUid;
+  const headerAvatarHtml = (isSupportConv || !isFb) ? `<div class="msgs-avatar">${esc(initials(convName))}</div>` : avatarHtml(state.otherUserPhotoURL, convName, 'msgs-avatar');
+  const openConvProfile = canLinkProfile ? `goShop('${esc(conv.otherUid)}','${esc(convName).replace(/'/g,"")}')` : '';
   return `
   <div class="wrap">
     <div class="disp section-title" style="margin:20px 0 16px;">Mesajlar</div>
@@ -6592,9 +6606,9 @@ function viewMessages(){
         <div class="msgs-chat-head">
           <button class="msgs-back-btn" onclick="backToConversationList()" aria-label="Sohbetlere dön">${ic('arrowLeft',18)}</button>
           <div class="msgs-chat-id">
-            <div class="msgs-avatar">${esc(initials(convName))}</div>
+            <div ${canLinkProfile?`class="msgs-avatar-btn" onclick="${openConvProfile}" role="button" aria-label="${esc(convName)} profiline git"`:''}>${headerAvatarHtml}</div>
             <div style="min-width:0;">
-              <div class="msgs-chat-name">${esc(convName)}</div>
+              <div class="msgs-chat-name${canLinkProfile?' msgs-chat-name-link':''}" ${canLinkProfile?`onclick="${openConvProfile}"`:''}>${esc(convName)}</div>
               <div class="msgs-chat-sub">${esc(convListing||'')}</div>
             </div>
           </div>
@@ -6657,6 +6671,7 @@ function detachOtherUserPresence(){
   if(_otherPresenceUnsub){ _otherPresenceUnsub(); _otherPresenceUnsub=null; }
   _otherPresenceUid = null;
   state.otherUserLastActiveAt = 0;
+  state.otherUserPhotoURL = '';
 }
 function attachOtherUserPresence(uid){
   if(!FIREBASE_ENABLED || !fbDb || !uid){ detachOtherUserPresence(); return; }
@@ -6666,8 +6681,9 @@ function attachOtherUserPresence(uid){
   _otherPresenceUnsub = fbDb.collection('users').doc(uid).onSnapshot(function(snap){
     const d = snap.data()||{};
     state.otherUserLastActiveAt = d.lastActiveAt && d.lastActiveAt.toMillis ? d.lastActiveAt.toMillis() : 0;
+    state.otherUserPhotoURL = d.photoURL || '';
     if(state.view==='messages') refreshMessagesLive();
-  }, function(){ state.otherUserLastActiveAt = 0; });
+  }, function(){ state.otherUserLastActiveAt = 0; state.otherUserPhotoURL = ''; });
 }
 function isOtherUserOnline(){
   return !!state.otherUserLastActiveAt && (Date.now() - state.otherUserLastActiveAt) < PRESENCE_ONLINE_THRESHOLD_MS;
@@ -7019,7 +7035,7 @@ function saveLocalGlobalChat(list){
 }
 function mapLocalGchatMsg(m){
   const d = m.createdAt ? new Date(m.createdAt) : new Date();
-  return { id:m.id, uid:m.uid||'', name:m.name||'Mağaza', text:m.text||'',
+  return { id:m.id, uid:m.uid||'', name:m.name||'Mağaza', text:m.text||'', photoURL:m.photoURL||'',
     time: d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) };
 }
 function listenGlobalChat(){
@@ -7051,7 +7067,7 @@ function listenGlobalChat(){
       const list = snap.docs.map(function(d){
         const m = d.data()||{};
         const ts = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : null;
-        return { id:d.id, uid:m.uid||'', name:m.name||'Mağaza', text:m.text||'',
+        return { id:d.id, uid:m.uid||'', name:m.name||'Mağaza', text:m.text||'', photoURL:m.photoURL||'',
           time: ts ? ts.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) : 'Şimdi' };
       }).reverse();
       state.gchat.messages = list;
@@ -7082,7 +7098,7 @@ async function sendGlobalChatMessage(text){
   const name = displayName();
   if(!FIREBASE_ENABLED || !fbDb){
     const list = loadLocalGlobalChat();
-    list.push({ id:'local-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), uid: state.uid||'demo-user', name, text, createdAt: Date.now() });
+    list.push({ id:'local-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), uid: state.uid||'demo-user', name, text, photoURL: state.photoURL||'', createdAt: Date.now() });
     saveLocalGlobalChat(list);
     state.gchat.messages = loadLocalGlobalChat().map(mapLocalGchatMsg);
     state.gchat.readCount = state.gchat.messages.length;
@@ -7092,7 +7108,7 @@ async function sendGlobalChatMessage(text){
   if(!state.uid) return;
   try{
     await fbDb.collection('globalChatMessages').add({
-      uid: state.uid, name: name, text: text,
+      uid: state.uid, name: name, text: text, photoURL: state.photoURL||'',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
   }catch(err){ console.error('Global mesaj gönderilemedi:', err); toast('Mesaj gönderilemedi','error'); }
@@ -7103,11 +7119,16 @@ function scrollGlobalChatToBottom(){
 }
 function renderGchatBubble(m){
   const mine = !!(state.uid && m.uid===state.uid) || (!FIREBASE_ENABLED && m.uid==='demo-user' && !state.uid);
+  // Kendi mesajın hariç, isim/foto tıklanabilir — o kullanıcının mağaza
+  // profiline götürür (bkz. goShop). uid yoksa (eski/anonim kayıt) tıklama
+  // devre dışı bırakılır, çünkü hangi profile gidileceği belli olmaz.
+  const clickable = !mine && !!m.uid;
+  const openProfile = clickable ? `closeGlobalChat();goShop('${esc(m.uid)}','${esc(m.name).replace(/'/g,"")}');` : '';
   return `
   <div class="gchat-msg ${mine?'me':'them'}">
-    ${!mine ? `<div class="gchat-avatar">${esc(initials(m.name))}</div>` : ''}
+    ${!mine ? `<div ${clickable?`class="gchat-avatar-btn" onclick="${openProfile}" role="button" aria-label="${esc(m.name)} profiline git"`:''}>${avatarHtml(m.photoURL, m.name, 'gchat-avatar')}</div>` : ''}
     <div class="msg-bubble ${mine?'me':'them'} gchat-bubble">
-      ${!mine ? `<div class="gchat-name">${esc(m.name)}</div>` : ''}
+      ${!mine ? `<div class="gchat-name${clickable?' gchat-name-link':''}" ${clickable?`onclick="${openProfile}"`:''}>${esc(m.name)}</div>` : ''}
       ${esc(m.text)}<div class="msg-time">${esc(m.time||'Şimdi')}</div>
     </div>
   </div>`;
