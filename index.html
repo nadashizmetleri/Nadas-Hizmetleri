@@ -1638,7 +1638,7 @@ html,body{touch-action:pan-x pan-y;}
          allow read: if isAdmin();
          allow create: if isSignedIn()
            && request.resource.data.fromUid == request.auth.uid
-           && request.resource.data.type in ['support','withdrawal']
+           && request.resource.data.type in ['support','withdrawal','livesupport']
            && request.resource.data.read == false;
          allow update: if isAdmin()
            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
@@ -1716,6 +1716,47 @@ html,body{touch-action:pan-x pan-y;}
            && request.resource.data.createdAt == request.time;
          allow update: if false;
          allow delete: if isAdmin();
+       }
+
+       // CANLI DESTEK EKİBİ SOHBETİ: dokümanın ID'si HER ZAMAN ilgili kullanıcının
+       // uid'idir (kullanıcı başına tek bir destek sohbeti). Sohbeti SADECE admin
+       // (destek ekibi), panelde girdiği e-posta adresinden bulduğu kullanıcı için
+       // başlatabilir — normal bir kullanıcı kendi adına bu dokümanı oluşturamaz.
+       // Kullanıcı SADECE kendi sohbetini (uid kendisiyle eşleşen) okuyabilir ve
+       // sadece "unreadForUser","unreadForAdmin","lastMessage","lastMessageAt"
+       // alanlarını (mesaj gönderirken önizleme/okunmadı durumu için) güncelleyebilir
+       // — sohbetin sahibini (uid/userEmail/userName) veya oluşturulma bilgisini asla
+       // değiştiremez.
+       match /supportChats/{uid} {
+         allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+         allow create: if isAdmin() && request.resource.data.uid == uid;
+         allow update: if isAdmin()
+           || (isSignedIn() && request.auth.uid == uid
+               && request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['unreadForUser','unreadForAdmin','lastMessage','lastMessageAt']));
+         allow delete: if isAdmin();
+
+         // MESAJLAR: gönderen "admin" ise SADECE gerçek bir admin hesabı yazabilir
+         // ve gönderen adı her zaman sabit "Destek Ekibi" olmalıdır (kullanıcı
+         // tarafında böyle görünmesi gerektiği için) — böylece hiçbir normal
+         // kullanıcı kendini "Destek Ekibi" gibi gösteren sahte bir mesaj yazamaz.
+         // Gönderen "user" ise sadece o sohbetin sahibi (kendi uid'i ile,
+         // "from":"user" olarak) yazabilir. Mesajlar hiçbir zaman düzenlenemez,
+         // sadece admin tarafından (moderasyon amacıyla) silinebilir — geçmiş
+         // bu şekilde bozulmadan kalıcı kalır.
+         match /messages/{messageId} {
+           allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+           allow create: if isSignedIn()
+             && request.resource.data.text is string
+             && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 3000
+             && request.resource.data.createdAt == request.time
+             && (
+               (isAdmin() && request.resource.data.from == 'admin' && request.resource.data.senderName == 'Destek Ekibi')
+               || (request.auth.uid == uid && request.resource.data.from == 'user')
+             );
+           allow update: if false;
+           allow delete: if isAdmin();
+         }
        }
      }
    }
@@ -2402,6 +2443,14 @@ const state = {
   tickets: FIREBASE_ENABLED ? [] : MOCK_TICKETS.slice(),
   adminInboxNotifications: [], // admin paneli "Gelen Talep Bildirimleri" — bkz. pushAdminNotification
   announcements: [],
+  // CANLI DESTEK — kullanıcı tarafı: kendi destek sohbeti (bkz. listenLiveSupportChat)
+  liveSupportChatExists:false,
+  liveSupportUnread:false,
+  liveSupportMessages: [],
+  // CANLI DESTEK — admin tarafı: sohbet listesi + o an açık olan sohbet (bkz. watchAdminSupportChats)
+  adminSupportChats: [],
+  adminActiveSupportChat: null,
+  adminSupportMessages: [],
   accountTab:'profil',
   adminTab:'kullanicilar',
   hasPass:false,
@@ -2433,6 +2482,15 @@ function resetPersonalState(){
   state.tickets = [];
   state.adminInboxNotifications = [];
   detachAdminInboxListener();
+  state.liveSupportChatExists = false;
+  state.liveSupportUnread = false;
+  state.liveSupportMessages = [];
+  detachLiveSupportChat();
+  state.adminSupportChats = [];
+  state.adminActiveSupportChat = null;
+  state.adminSupportMessages = [];
+  detachAdminSupportChats();
+  detachAdminSupportMessages();
   state.favorites = new Set();
   state.cart = [];
   state.userPhone = '';
@@ -2778,7 +2836,8 @@ function watchAuthState(){
       listenConversations();
       watchDealTransactions();
       listenGlobalChat();
-      if(state.isAdmin){ loadPaymentRequestsFromFirestore(); loadGlobalTransactionsFromFirestore(); loadSupportTicketsFromFirestore(); loadAnnouncementsForAdmin(); watchAdminInboxNotifications(); }
+      listenLiveSupportChat();
+      if(state.isAdmin){ loadPaymentRequestsFromFirestore(); loadGlobalTransactionsFromFirestore(); loadSupportTicketsFromFirestore(); loadAnnouncementsForAdmin(); watchAdminInboxNotifications(); watchAdminSupportChats(); }
       render();
     }else{
       if(_announceUnsub){ _announceUnsub(); _announceUnsub=null; }
@@ -2792,6 +2851,9 @@ function watchAuthState(){
       detachGlobalTransactionsListener();
       detachSupportTicketsListener();
       detachAdminInboxListener();
+      detachLiveSupportChat();
+      detachAdminSupportChats();
+      detachAdminSupportMessages();
       _myDeliveriesByOrder = {};
       resetPersonalState();
       state.uid=null; state.loggedIn=false; state.isAdmin=false; state.userName=''; state.userEmail='';
@@ -3114,6 +3176,7 @@ const NOTIF_TYPES = {
   balance:{icon:'wallet', color:'var(--green)', label:'Bakiye'},
   system:{icon:'bell', color:'var(--mid)', label:'Sistem'},
   admin:{icon:'sparkle', color:'var(--orange)', label:'Admin Duyurusu'},
+  support_chat:{icon:'chat', color:'var(--blue)', label:'Canlı Destek'},
 };
 function notifMeta(type){ return NOTIF_TYPES[type] || NOTIF_TYPES.system; }
 /* Yeni bir bildirim geldiğinde kullanıcıyı ANINDA bilgilendirir: uygulama
@@ -3260,9 +3323,11 @@ function openNotificationItem(id){
 const ADMIN_INBOX_TYPES = {
   support:{icon:'ticket', color:'var(--orange)', label:'Destek Talebi'},
   withdrawal:{icon:'send', color:'var(--green)', label:'Para Çekme Talebi'},
+  livesupport:{icon:'chat', color:'var(--blue)', label:'Canlı Destek Mesajı'},
 };
 function adminInboxMeta(type){ return ADMIN_INBOX_TYPES[type] || ADMIN_INBOX_TYPES.support; }
 function adminInboxUnreadCount(){ return (state.adminInboxNotifications||[]).filter(n=>!n.read).length; }
+function adminSupportUnreadCount(){ return (state.adminSupportChats||[]).filter(c=>c.unreadForAdmin).length; }
 async function pushAdminNotification(data){
   const payload = {
     type: data.type||'support',
@@ -3338,7 +3403,12 @@ function openAdminInboxItem(id){
   const n = (state.adminInboxNotifications||[]).find(x=>String(x.id)===String(id));
   if(!n) return;
   markAdminInboxRead(id);
-  state.adminTab = n.type==='withdrawal' ? 'paracekme' : 'destekler';
+  if(n.type==='livesupport'){
+    state.adminTab = 'canlidestek';
+    if(n.fromUid) adminOpenSupportChat(n.fromUid);
+  }else{
+    state.adminTab = n.type==='withdrawal' ? 'paracekme' : 'destekler';
+  }
   render();
 }
 
@@ -6545,6 +6615,239 @@ async function sendMessage(text){
   }catch(err){ console.error('Mesaj gönderilemedi:', err); toast('Mesaj gönderilemedi','error'); }
 }
 
+/* ================= CANLI DESTEK EKİBİ SOHBETİ =================
+   Yönetim Paneli > Canlı Destek sekmesinden, admin bir kullanıcının e-posta
+   adresini girerek onunla `supportChats/{uid}` dokümanı (+ altındaki
+   `messages` alt koleksiyonu) üzerinden kalıcı, gerçek zamanlı bir sohbet
+   başlatır. Sadece admin "Destek Ekibi" adına mesaj yazabilir (bkz. güvenlik
+   kuralları); kullanıcı sadece KENDİ sohbetinde cevap yazabilir. Kullanıcı
+   girişi yaptığı andan itibaren kendi sohbeti arka planda canlı dinlenir
+   (bkz. listenLiveSupportChat) — Destek Merkezi sayfasını açması gerekmez,
+   yeni mesaj geldiğinde toast/OS bildirimi (pushNotification → notifyUser)
+   ile ANINDA haberdar olur. */
+
+/* ---- Kullanıcı tarafı ---- */
+let _liveSupportDocUnsub = null;
+let _liveSupportMsgUnsub = null;
+let _liveSupportInitialLoadDone = false;
+function detachLiveSupportChat(){
+  if(_liveSupportDocUnsub){ _liveSupportDocUnsub(); _liveSupportDocUnsub=null; }
+  if(_liveSupportMsgUnsub){ _liveSupportMsgUnsub(); _liveSupportMsgUnsub=null; }
+  _liveSupportInitialLoadDone = false;
+}
+/* Giriş yapan kullanıcının kendi destek sohbetini (varsa) canlı dinler.
+   Sohbet dokümanı henüz yoksa (destek ekibi hiç yazmadıysa) sessizce hiçbir
+   şey göstermez — admin ilk mesajı gönderdiği an doküman oluşur ve dinleyici
+   bunu otomatik yakalar (onSnapshot zaten dokümanın var/yok tüm hallerini bildirir). */
+function listenLiveSupportChat(){
+  if(!FIREBASE_ENABLED || !fbDb || !state.uid) return;
+  if(_liveSupportDocUnsub) _liveSupportDocUnsub();
+  const myUid = state.uid;
+  _liveSupportDocUnsub = fbDb.collection('supportChats').doc(myUid).onSnapshot(function(snap){
+    if(snap.exists){
+      const d = snap.data()||{};
+      state.liveSupportChatExists = true;
+      state.liveSupportUnread = !!d.unreadForUser;
+      if(_liveSupportMsgUnsub===null) attachLiveSupportMessages(myUid);
+    }else{
+      state.liveSupportChatExists = false;
+      state.liveSupportUnread = false;
+    }
+    if(state.view==='support') refreshLiveSupportLive(); else renderHeaderOnly();
+  }, function(err){ console.error('Destek sohbeti dinlenemedi:', err); });
+}
+function attachLiveSupportMessages(uid){
+  if(_liveSupportMsgUnsub) _liveSupportMsgUnsub();
+  _liveSupportInitialLoadDone = false;
+  _liveSupportMsgUnsub = fbDb.collection('supportChats').doc(uid).collection('messages')
+    .orderBy('createdAt','asc')
+    .onSnapshot(function(snap){
+      state.liveSupportMessages = snap.docs.map(function(d){
+        const m = d.data()||{};
+        const ts = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : null;
+        return {
+          id:d.id, fromAdmin: m.from==='admin', senderName: m.senderName||(m.from==='admin'?'Destek Ekibi':state.userName),
+          text: m.text||'', time: ts ? ts.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) : 'Şimdi',
+        };
+      });
+      // İlk anlık görüntüden SONRA gelen yeni admin mesajları için toast/OS bildirimi gösterilir
+      // (pushNotification zaten Firestore'a bildirim yazdığında watchNotifications bunu yakalar;
+      // burada ayrıca sohbet ekranını da anında günceller).
+      _liveSupportInitialLoadDone = true;
+      if(state.view==='support') refreshLiveSupportLive();
+    }, function(err){ console.error('Destek mesajları dinlenemedi:', err); });
+}
+/* Kullanıcı Destek Merkezi > Canlı Destek bölümünü görüntülediğinde,
+   destek ekibinden gelen okunmamış mesajları "okundu" işaretler. */
+function markLiveSupportRead(){
+  if(!FIREBASE_ENABLED || !fbDb || !state.uid || !state.liveSupportUnread) return;
+  fbDb.collection('supportChats').doc(state.uid).update({ unreadForUser:false }).catch(function(){});
+}
+async function sendLiveSupportReply(text){
+  text = (text||'').trim();
+  if(!text) return;
+  if(!FIREBASE_ENABLED || !fbDb){ toast('Bu özellik Firebase yapılandırması gerektirir.','error'); return; }
+  if(!state.uid){ toast('Mesaj göndermek için giriş yapmalısın.','error'); return; }
+  if(!state.liveSupportChatExists){ toast('Destek ekibi henüz seninle bir sohbet başlatmadı.','error'); return; }
+  const chatRef = fbDb.collection('supportChats').doc(state.uid);
+  try{
+    await chatRef.collection('messages').add({
+      from:'user', senderName: state.userName||state.userEmail||'Kullanıcı', text:text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await chatRef.update({
+      lastMessage:text, lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(), unreadForAdmin:true,
+    });
+    pushAdminNotification({ type:'livesupport', message:text, refId:state.uid });
+  }catch(err){ console.error('Destek mesajı gönderilemedi:', err); toast('Mesaj gönderilemedi','error'); }
+}
+/* Sohbet gövdesini (mesaj balonları) DOM'dan input'a hiç dokunmadan günceller
+   — bkz. refreshMessagesLive() açıklaması, aynı desen burada da uygulanır. */
+function refreshLiveSupportLive(){
+  if(state.view!=='support') return;
+  const thread = document.getElementById('liveSupportThread');
+  if(!thread){ renderMainOnly(); return; }
+  const tmp = document.createElement('div');
+  tmp.innerHTML = currentViewHtml();
+  const neu = tmp.querySelector('#liveSupportThread');
+  const badge = tmp.querySelector('#liveSupportBadge');
+  if(neu) thread.innerHTML = neu.innerHTML;
+  const curBadge = document.getElementById('liveSupportBadge');
+  if(curBadge && badge) curBadge.outerHTML = badge.outerHTML;
+  else if(curBadge && !badge) curBadge.remove();
+  thread.scrollTop = thread.scrollHeight;
+}
+
+/* ---- Admin tarafı ---- */
+let _adminSupportListUnsub = null;
+let _adminSupportMsgUnsub = null;
+function detachAdminSupportChats(){ if(_adminSupportListUnsub){ _adminSupportListUnsub(); _adminSupportListUnsub=null; } }
+function detachAdminSupportMessages(){ if(_adminSupportMsgUnsub){ _adminSupportMsgUnsub(); _adminSupportMsgUnsub=null; } }
+/* Tüm canlı destek sohbetlerini (son mesaja göre sıralı) canlı dinler —
+   sadece admin oturumunda çalışır. Yönetim Paneli > Canlı Destek sekmesindeki
+   sohbet listesini besler. */
+function watchAdminSupportChats(){
+  if(!FIREBASE_ENABLED || !fbDb || !state.isAdmin) return;
+  if(_adminSupportListUnsub) _adminSupportListUnsub();
+  _adminSupportListUnsub = fbDb.collection('supportChats').orderBy('lastMessageAt','desc').limit(200)
+    .onSnapshot(function(snap){
+      state.adminSupportChats = snap.docs.map(function(d){
+        const c = d.data()||{};
+        const lastAt = c.lastMessageAt && c.lastMessageAt.toMillis ? c.lastMessageAt.toMillis() : 0;
+        return {
+          uid:d.id, userEmail:c.userEmail||'', userName:c.userName||c.userEmail||'Kullanıcı',
+          lastMessage:c.lastMessage||'', lastMessageAt:lastAt, unreadForAdmin:!!c.unreadForAdmin,
+        };
+      });
+      if(state.view==='admin' && state.adminTab==='canlidestek') renderMainOnly(); else renderHeaderOnly();
+    }, function(err){ console.error('Destek sohbetleri dinlenemedi:', err); });
+}
+/* Var olan bir sohbeti listeden seçip açar. */
+function adminOpenSupportChat(uid){
+  if(!uid) return;
+  state.adminActiveSupportChat = uid;
+  attachAdminSupportMessages(uid);
+  renderMainOnly();
+}
+function attachAdminSupportMessages(uid){
+  if(!FIREBASE_ENABLED || !fbDb || !uid) return;
+  if(_adminSupportMsgUnsub) _adminSupportMsgUnsub();
+  state.adminSupportMessages = [];
+  _adminSupportMsgUnsub = fbDb.collection('supportChats').doc(uid).collection('messages')
+    .orderBy('createdAt','asc')
+    .onSnapshot(function(snap){
+      state.adminSupportMessages = snap.docs.map(function(d){
+        const m = d.data()||{};
+        const ts = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : null;
+        return {
+          id:d.id, fromAdmin: m.from==='admin', senderName: m.senderName||(m.from==='admin'?'Destek Ekibi':'Kullanıcı'),
+          text: m.text||'', time: ts ? ts.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) : 'Şimdi',
+        };
+      });
+      if(state.view==='admin' && state.adminTab==='canlidestek') refreshAdminSupportLive();
+    }, function(err){ console.error('Destek mesajları dinlenemedi:', err); });
+  fbDb.collection('supportChats').doc(uid).update({ unreadForAdmin:false }).catch(function(){});
+}
+/* Admin panelinde, girilen e-posta adresine ait kullanıcıyla sohbeti bulur
+   (yoksa oluşturur) ve açar. adminSendBalance/adminGrantPass ile birebir aynı
+   "e-posta → kullanıcı dokümanı" arama desenini kullanır. */
+async function adminStartSupportChatByEmail(){
+  const input = document.getElementById('liveSupportEmailInput');
+  const email = ((input && input.value)||'').trim().toLowerCase();
+  if(!email){ toast('Lütfen bir e-posta gir','error'); return; }
+  if(!FIREBASE_ENABLED || !fbDb){ toast('Bu özellik Firebase yapılandırması gerektirir.','error'); return; }
+  const btn = document.getElementById('liveSupportStartBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Aranıyor...'; }
+  try{
+    const snap = await fbDb.collection('users').where('email','==',email).limit(1).get();
+    if(snap.empty){ toast('Bu e-postaya ait kullanıcı bulunamadı','error'); return; }
+    const doc = snap.docs[0];
+    const uid = doc.id;
+    const userName = doc.data().name || email;
+    const chatRef = fbDb.collection('supportChats').doc(uid);
+    const chatSnap = await chatRef.get();
+    if(!chatSnap.exists){
+      await chatRef.set({
+        uid:uid, userEmail:email, userName:userName, lastMessage:'', unreadForUser:false, unreadForAdmin:false,
+        lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    if(input) input.value='';
+    adminOpenSupportChat(uid);
+    toast(`${userName} ile canlı destek sohbeti açıldı`,'success');
+  }catch(err){ console.error('Sohbet başlatılamadı:', err); toast('Sohbet başlatılamadı: '+authErrorMessage(err),'error'); }
+  if(btn){ btn.disabled=false; btn.textContent='Sohbeti Aç / Başlat'; }
+  render();
+}
+async function adminSendSupportMessage(text){
+  text = (text||'').trim();
+  if(!text) return;
+  const uid = state.adminActiveSupportChat;
+  if(!uid){ toast('Önce bir kullanıcı seç ya da e-posta ile sohbet başlat.','error'); return; }
+  if(!FIREBASE_ENABLED || !fbDb){ toast('Bu özellik Firebase yapılandırması gerektirir.','error'); return; }
+  const chatRef = fbDb.collection('supportChats').doc(uid);
+  try{
+    await chatRef.collection('messages').add({
+      from:'admin', senderName:'Destek Ekibi', text:text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await chatRef.update({
+      lastMessage:text, lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(), unreadForUser:true,
+    });
+    pushNotification(uid, {
+      type:'support_chat', title:'Destek Ekibi',
+      text: text.length>120 ? text.slice(0,120)+'…' : text,
+      link:{view:'support', params:{}},
+    });
+  }catch(err){ console.error('Destek mesajı gönderilemedi:', err); toast('Mesaj gönderilemedi: '+authErrorMessage(err),'error'); }
+}
+/* Admin Canlı Destek ekranını (sohbet listesi + aktif sohbet balonları),
+   mesaj yazma kutusuna dokunmadan günceller — refreshMessagesLive() ile aynı desen. */
+function refreshAdminSupportLive(){
+  if(!(state.view==='admin' && state.adminTab==='canlidestek')) return;
+  const shell = document.getElementById('adminSupportShell');
+  if(!shell){ renderMainOnly(); return; }
+  const tmp = document.createElement('div');
+  tmp.innerHTML = currentViewHtml();
+  const newShell = tmp.querySelector('#adminSupportShell');
+  if(!newShell){ renderMainOnly(); return; }
+  [
+    ['.admin-support-list','html'],
+    ['.msgs-chat-name','text'],
+    ['.msgs-chat-sub','text'],
+    ['#adminSupportThread','html'],
+  ].forEach(function(pair){
+    const sel = pair[0], mode = pair[1];
+    const cur = shell.querySelector(sel);
+    const neu = newShell.querySelector(sel);
+    if(!cur || !neu) return;
+    if(mode==='html') cur.innerHTML = neu.innerHTML; else cur.textContent = neu.textContent;
+  });
+  const thread = document.getElementById('adminSupportThread');
+  if(thread) thread.scrollTop = thread.scrollHeight;
+}
+
 /* ================= GLOBAL SOHBET ================= */
 /* Tüm kayıtlı kullanıcıların birlikte yazabildiği tek ortak oda. Sağ altta
    yüzen bir buton (FAB) ile her sayfadan erişilebilir; herhangi bir mevcut
@@ -7337,6 +7640,7 @@ const FAQS = [
   ['İlan verirken ücret alınıyor mu?','İlan vermek tamamen ücretsizdir. Sadece başarılı satışlarda düşük oranlı bir hizmet bedeli uygulanır.'],
 ];
 function viewSupport(){
+  if(state.liveSupportChatExists && state.liveSupportUnread) markLiveSupportRead();
   return `
   <div class="wrap">
     <div class="disp section-title" style="margin:20px 0 4px;">Destek Merkezi</div>
@@ -7344,10 +7648,28 @@ function viewSupport(){
     <div class="panel-layout">
       <aside class="panel-nav">
         <button class="panel-nav-item active">${ic('help',15)} Sık Sorulan Sorular</button>
+        ${state.liveSupportChatExists?`<button class="panel-nav-item" onclick="document.getElementById('liveSupportSection').scrollIntoView({behavior:'smooth'})">${ic('chat',15)} Canlı Destek${state.liveSupportUnread?` <span class="pill pill-danger" style="margin-left:4px;">●</span>`:''}</button>`:''}
         <button class="panel-nav-item" onclick="document.getElementById('ticketForm').scrollIntoView({behavior:'smooth'})">${ic('ticket',15)} Destek Talebi Oluştur</button>
         <button class="panel-nav-item" onclick="document.getElementById('myTickets').scrollIntoView({behavior:'smooth'})">${ic('chat',15)} Taleplerim</button>
       </aside>
       <div class="panel-content">
+        ${state.liveSupportChatExists?`
+        <div id="liveSupportSection">
+          <h2 class="disp" style="font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">${ic('chat',16)} Canlı Destek <span id="liveSupportBadge">${state.liveSupportUnread?`<span class="pill pill-danger">Yeni Mesaj</span>`:''}</span></h2>
+          <p class="hint" style="margin-bottom:12px;">Destek ekibimizle olan canlı sohbetin — yazdığın mesajlar anında ekibimize ulaşır.</p>
+          <div class="msgs-shell" style="height:420px;max-height:60vh;border-radius:12px;">
+            <section class="msgs-chat" style="width:100%;">
+              <div class="msgs-thread" id="liveSupportThread">
+                ${state.liveSupportMessages.length ? state.liveSupportMessages.map(m=>`<div class="msg-bubble ${m.fromAdmin?'them':'me'}">${esc(m.text)}<div class="msg-time">${m.fromAdmin?'Destek Ekibi · ':''}${m.time}</div></div>`).join('') : `<div class="msgs-empty-thread">Destek ekibi seninle sohbeti başlattı, ilk mesajını bekleyebilirsin ya da hemen yazabilirsin.</div>`}
+              </div>
+              <form class="msgs-compose" onsubmit="event.preventDefault(); sendLiveSupportReply(this.msg.value); this.reset();">
+                <input id="liveSupportComposeInput" name="msg" placeholder="Destek ekibine yaz..." required autocomplete="off">
+                <button class="btn btn-primary" type="submit" aria-label="Gönder">${ic('send',17)}</button>
+              </form>
+            </section>
+          </div>
+        </div>
+        <div class="divider"></div>` : ''}
         <div>
           ${FAQS.map((f,i)=>`
             <div class="faq-item" id="faq${i}">
@@ -7449,6 +7771,7 @@ function replyTicket(text){
 /* ---------------- ADMİN PANELİ ---------------- */
 const ADMIN_TABS = [
   ['gelenkutusu','bell','Gelen Talep Bildirimleri'],
+  ['canlidestek','chat','Canlı Destek'],
   ['destekler','help','Açılan Talepler'],['odemeler','card','Bakiye Yükleme Onayları'],
   ['paracekme','send','Para Çekme Talepleri'],
   ['kullanicilar','users','Kullanıcı Yönetimi'],['ilanlar','clipboard','İlan Yönetimi'],
@@ -7501,7 +7824,7 @@ function viewAdmin(){
     </div>
     <div class="panel-layout">
       <aside class="panel-nav">
-        ${ADMIN_TABS.map(([id,icon,label])=>`<button class="panel-nav-item ${tab===id?'active':''}" onclick="state.adminTab='${id}';render();">${ic(icon,15)} ${label}${id==='gelenkutusu'&&adminInboxUnreadCount()?` <span class="pill pill-danger" style="margin-left:4px;">${adminInboxUnreadCount()}</span>`:''}</button>`).join('')}
+        ${ADMIN_TABS.map(([id,icon,label])=>`<button class="panel-nav-item ${tab===id?'active':''}" onclick="state.adminTab='${id}';render();">${ic(icon,15)} ${label}${id==='gelenkutusu'&&adminInboxUnreadCount()?` <span class="pill pill-danger" style="margin-left:4px;">${adminInboxUnreadCount()}</span>`:''}${id==='canlidestek'&&adminSupportUnreadCount()?` <span class="pill pill-danger" style="margin-left:4px;">${adminSupportUnreadCount()}</span>`:''}</button>`).join('')}
       </aside>
       <div class="panel-content">
         <div class="panel-content-head">
@@ -7714,6 +8037,9 @@ function adminTabContent(tab){
       </div>`;
     }).join('') : '<div class="empty-state"><div class="em-icon">'+ic('bell',30)+'</div><b>Henüz gelen bildirim yok</b><p class="small mt-10">Yeni bir destek talebi veya para çekme talebi geldiğinde burada görünecek.</p></div>'}`;
   }
+  if(tab==='canlidestek'){
+    return adminSupportChatContent();
+  }
   if(tab==='destekler'){
     const sorted = state.tickets.slice().sort((a,b)=>(b.priority?1:0)-(a.priority?1:0));
     return `<div class="data-table-wrap"><table class="data-table">
@@ -7756,6 +8082,62 @@ function adminTabContent(tab){
     </div>`;
   }
   return '';
+}
+/* Yönetim Paneli > Canlı Destek sekmesinin içeriği: solda e-posta ile sohbet
+   başlatma kutusu + var olan sohbetlerin listesi, sağda seçili sohbetin
+   mesaj balonları + (sadece admin oturumunda etkin) yazma kutusu. */
+function adminSupportChatContent(){
+  const list = (state.adminSupportChats||[]);
+  const activeUid = state.adminActiveSupportChat;
+  const active = list.find(c=>c.uid===activeUid) || null;
+  return `
+  <div class="msgs-shell" id="adminSupportShell" style="height:560px;max-height:70vh;">
+    <aside class="msgs-list" style="width:100%;">
+      <div class="msgs-list-head"><b>${ic('search',13)} Yeni Sohbet</b></div>
+      <div style="padding:12px 12px 4px;display:flex;gap:6px;">
+        <input id="liveSupportEmailInput" type="email" placeholder="kullanici@eposta.com" style="flex:1;min-width:0;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--hi);font-size:12.5px;" onkeydown="if(event.key==='Enter'){event.preventDefault();adminStartSupportChatByEmail();}">
+      </div>
+      <div style="padding:6px 12px 12px;">
+        <button class="btn btn-primary btn-sm btn-block" id="liveSupportStartBtn" onclick="adminStartSupportChatByEmail()">${ic('send',13)} Sohbeti Aç / Başlat</button>
+      </div>
+      <div class="msgs-list-head" style="border-top:1px solid var(--border-soft);"><b>Sohbetler</b><span class="msgs-count">${list.length}</span></div>
+      <div class="msgs-list-scroll admin-support-list">
+        ${list.length ? list.map(c=>`
+          <button class="msgs-row ${activeUid===c.uid?'active':''}" onclick="adminOpenSupportChat('${c.uid}')">
+            <div class="msgs-avatar">${esc(initials(c.userName))}</div>
+            <div class="msgs-row-body">
+              <div class="msgs-row-top">
+                <span class="msgs-row-name">${esc(c.userName)}</span>
+                ${c.lastMessageAt?`<span class="msgs-row-time">${timeAgo(c.lastMessageAt)}</span>`:''}
+              </div>
+              <div class="msgs-row-preview">
+                <span>${esc(c.lastMessage||c.userEmail||'')}</span>
+                ${c.unreadForAdmin?`<span class="msgs-unread-dot"></span>`:''}
+              </div>
+            </div>
+          </button>`).join('') : `<div class="empty-state" style="padding:24px 12px;"><div class="em-icon">${ic('chat',26)}</div><b style="font-size:12.5px;">Henüz sohbet yok</b><div class="small text-mid" style="margin-top:4px;">Yukarıdan bir e-posta girerek başlat.</div></div>`}
+      </div>
+    </aside>
+    <section class="msgs-chat">
+      ${active ? `
+      <div class="msgs-chat-head">
+        <div class="msgs-chat-id">
+          <div class="msgs-avatar">${esc(initials(active.userName))}</div>
+          <div style="min-width:0;">
+            <div class="msgs-chat-name">${esc(active.userName)}</div>
+            <div class="msgs-chat-sub">${esc(active.userEmail)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="msgs-thread" id="adminSupportThread">
+        ${state.adminSupportMessages.length ? state.adminSupportMessages.map(m=>`<div class="msg-bubble ${m.fromAdmin?'me':'them'}">${esc(m.text)}<div class="msg-time">${!m.fromAdmin?esc(m.senderName)+' · ':''}${m.time}</div></div>`).join('') : `<div class="msgs-empty-thread">Henüz mesaj yok, ilk mesajı sen gönder.</div>`}
+      </div>
+      <form class="msgs-compose" onsubmit="event.preventDefault(); adminSendSupportMessage(this.msg.value); this.reset();">
+        <input id="adminSupportComposeInput" name="msg" placeholder="Destek Ekibi olarak yaz..." required autocomplete="off">
+        <button class="btn btn-primary" type="submit" aria-label="Gönder">${ic('send',17)}</button>
+      </form>` : `<div class="empty-state" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="em-icon">${ic('chat',30)}</div><b>Bir sohbet seç</b><div class="small text-mid" style="margin-top:6px;">Soldan bir sohbet seç ya da e-posta ile yeni bir sohbet başlat.</div></div>`}
+    </section>
+  </div>`;
 }
 async function adminRemoveListing(id){
   if(!confirm('Bu ilanı kalıcı olarak kaldırmak istediğine emin misin?')) return;
