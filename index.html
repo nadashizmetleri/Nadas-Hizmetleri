@@ -103,6 +103,39 @@ a{color:inherit;text-decoration:none;}
 @media(max-width:479px){.wrap{padding:0 14px;} .icon-btn{width:34px;height:34px;} .avatar{width:32px;height:32px;} .topbar-inner{gap:6px;padding:12px 12px;} .topbar-side{gap:5px;} .logo-text{font-size:14px;} .logo-text span{font-size:8.5px;} .logo-mark{width:32px;height:32px;font-size:14px;} .user-info-btn{padding:5px 8px 5px 5px;gap:6px;} .user-info-btn .ub-amount{font-size:11px;}}
 @media(max-width:359px){.logo-text span{display:none;}}
 
+/* ---------- ÜST KAMPANYA ŞERİDİ (500 TL yükle → 250 TL hediye) ---------- */
+.promo-bar{
+  position:relative;z-index:51;
+  background:linear-gradient(90deg,#FF7A29,#FFA53D 50%,#1FCF6E);
+  color:#050810;
+}
+.promo-bar-inner{position:relative;max-width:1240px;margin:0 auto;}
+.promo-bar-main{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  padding:9px 46px 9px 14px;color:#050810;text-align:center;
+}
+.promo-bar-gift{font-size:19px;line-height:1;flex-shrink:0;display:inline-block;animation:promo-wiggle 2.8s ease-in-out infinite;transform-origin:50% 80%;}
+.promo-bar-text{font-size:13px;font-weight:600;line-height:1.3;}
+.promo-bar-text b{font-family:'Space Grotesk',sans-serif;font-weight:700;}
+.promo-bar-cta{
+  flex-shrink:0;background:#050810;color:#fff;font-size:12px;font-weight:700;
+  padding:6px 13px;border-radius:999px;white-space:nowrap;transition:transform .15s;
+}
+.promo-bar-main:hover .promo-bar-cta{transform:scale(1.05);}
+.promo-bar-close{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  width:30px;height:30px;border-radius:50%;color:#050810;font-size:14px;opacity:.7;
+  display:flex;align-items:center;justify-content:center;
+}
+.promo-bar-close:hover{opacity:1;background:rgba(5,8,16,.12);}
+@keyframes promo-wiggle{0%,80%,100%{transform:rotate(0);}84%{transform:rotate(-14deg);}90%{transform:rotate(12deg);}95%{transform:rotate(-6deg);}}
+@media(prefers-reduced-motion:reduce){.promo-bar-gift{animation:none;}}
+@media(max-width:479px){
+  .promo-bar-main{gap:8px;padding:8px 40px 8px 10px;}
+  .promo-bar-text{font-size:12px;}
+  .promo-bar-cta{padding:5px 10px;font-size:11px;}
+}
+
 /* ---------- HEADER ---------- */
 header.topbar{
   position:sticky;top:0;z-index:50;
@@ -5849,8 +5882,17 @@ async function sendPasswordReset(){
     toast('Gönderilemedi: '+authErrorMessage(err), 'error');
   }
 }
+const TOPUP_IBAN = 'TR630006400000180001971609';
+const TOPUP_IBAN_NAME = 'Muhammed Doğan';
+let topupMethod = 'gplay';
 function openTopupModal(){
   topupSelected = 500;
+  topupMethod = 'gplay';
+  renderTopupModal();
+}
+function selectTopupMethod(m){ topupMethod = m; renderTopupModal(); }
+function renderTopupModal(){
+  const ibanFormatted = TOPUP_IBAN.replace(/(.{4})/g,'$1 ').trim();
   document.getElementById('modalRoot').innerHTML = `
   <div class="overlay" onclick="if(event.target===this) closeModal()">
     <div class="modal">
@@ -5859,15 +5901,15 @@ function openTopupModal(){
       <div class="amount-grid" id="amountGrid">
         ${[250,500,1000,2500,5000,10000].map(a=>`<div class="amount-chip ${a===topupSelected?'selected':''}" onclick="pickTopup(${a},this)">₺${a.toLocaleString('tr-TR')}</div>`).join('')}
       </div>
-      <div class="field"><label>Özel Tutar</label><input id="customTopup" type="number" placeholder="₺" oninput="topupSelected=Number(this.value)||0; document.querySelectorAll('.amount-chip').forEach(c=>c.classList.remove('selected'));"></div>
+      <div class="field"><label>Özel Tutar</label><input id="customTopup" type="number" placeholder="₺" value="${topupSelected||''}" oninput="topupSelected=Number(this.value)||0; document.querySelectorAll('.amount-chip').forEach(c=>c.classList.remove('selected'));"></div>
       <div class="field">
         <label>Ödeme Yöntemi</label>
-        <div class="bank-info-card" style="display:flex;align-items:center;gap:10px;padding:12px 14px;">
-          ${ic('smartphone',18)}
-          <b style="font-size:13px;">Google Play TL Yükleme</b>
-          <span class="pill pill-success" style="margin-left:auto;">Tek Yöntem</span>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn ${topupMethod==='gplay'?'btn-primary':'btn-ghost'} btn-sm" style="flex:1;" onclick="selectTopupMethod('gplay')">${ic('smartphone',14)} Google Play TL</button>
+          <button type="button" class="btn ${topupMethod==='iban'?'btn-primary':'btn-ghost'} btn-sm" style="flex:1;" onclick="selectTopupMethod('iban')">${ic('card',14)} Havale/EFT (IBAN)</button>
         </div>
       </div>
+      ${topupMethod==='gplay'?`
       <div class="field" id="gplayInfoBox">
         <div class="bank-info-card">
           <p class="small text-mid" style="margin-bottom:10px;">Google Play hediye kartı / kodunu aşağıya gir. Kod admin tarafından kontrol edilip onaylandıktan sonra seçtiğin tutar bakiyene yansır.</p>
@@ -5877,7 +5919,30 @@ function openTopupModal(){
           </div>
           <p class="small text-mid" style="margin-top:10px;">Kod hatalı veya kullanılmışsa talebin <b>reddedilir</b>. Google Play TL yükleme talebiniz <b>admin onayına</b> düşer, onaylanmadan bakiyenize yansımaz.</p>
         </div>
-      </div>
+      </div>`:`
+      <div class="field" id="ibanInfoBox">
+        <div class="bank-info-card">
+          <p class="small text-mid" style="margin-bottom:10px;">Aşağıdaki IBAN'a seçtiğin tutarı gönder, ardından gönderen ad soyadını gir. Havale/EFT admin tarafından kontrol edilip onaylandıktan sonra bakiyene yansır.</p>
+          <div class="field" style="margin-bottom:8px;">
+            <label>Alıcı</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="mono" style="font-size:13px;">${esc(TOPUP_IBAN_NAME)}</span>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>IBAN</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="mono" style="font-size:13px;flex:1;">${esc(ibanFormatted)}</span>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="copyText('${TOPUP_IBAN}',this)">${ic('copy',13)}</button>
+            </div>
+          </div>
+          <div class="field" style="margin-top:10px;margin-bottom:0;">
+            <label>Gönderen Ad Soyad</label>
+            <input id="ibanSenderName" type="text" placeholder="Havaleyi yaptığın ad soyad" autocomplete="off">
+          </div>
+          <p class="small text-mid" style="margin-top:10px;">Gönderen ad soyad, gönderdiğin tutarla eşleşmezse talebin <b>reddedilebilir</b>. Havale/EFT talebiniz <b>admin onayına</b> düşer, onaylanmadan bakiyenize yansımaz.</p>
+        </div>
+      </div>`}
       <p class="small text-mid">Talebin gönderildikten sonra admin onayına düşer, onaylanınca bakiyene yansır.</p>
       <button class="btn btn-primary btn-block" onclick="confirmTopup()">Yükle</button>
     </div>
@@ -5891,14 +5956,20 @@ function copyText(text, btn){
 function pickTopup(a, el){ topupSelected=a; document.querySelectorAll('.amount-chip').forEach(c=>c.classList.remove('selected')); el.classList.add('selected'); document.getElementById('customTopup').value=''; }
 async function confirmTopup(){
   if(!topupSelected || topupSelected<=0){ toast('Lütfen geçerli bir tutar gir','error'); return; }
-  const method = 'Google Play TL';
-  const gplayCode = (document.getElementById('gplayCode')||{}).value?.trim() || '';
-  if(!gplayCode){ toast('Lütfen Google Play kodunu gir','error'); return; }
-  // ÖNEMLİ: Sitede şu an gerçek bir ödeme sağlayıcısı entegre değil ve tek
-  // yükleme yöntemi Google Play TL'dir. Bu yöntem HER ZAMAN admin onayı
-  // bekler; hiçbir durumda otomatik yansımaz. Aksi halde kullanıcı gerçek
-  // ödeme yapmadan sadece butona basarak bakiye kazanabilir.
-  const reqData = { uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı', amount: topupSelected, method: method, status: 'Bekliyor', date: 'Bugün', gplayCode: gplayCode };
+  // ÖNEMLİ: Sitede şu an gerçek bir ödeme sağlayıcısı entegre değil. Google
+  // Play TL ve IBAN/Havale yöntemleri HER ZAMAN admin onayı bekler; hiçbir
+  // durumda otomatik yansımaz. Aksi halde kullanıcı gerçek ödeme yapmadan
+  // sadece butona basarak bakiye kazanabilir.
+  let reqData;
+  if(topupMethod==='iban'){
+    const senderName = (document.getElementById('ibanSenderName')||{}).value?.trim() || '';
+    if(!senderName){ toast('Lütfen gönderen ad soyadını gir','error'); return; }
+    reqData = { uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı', amount: topupSelected, method: 'Havale/EFT (IBAN)', status: 'Bekliyor', date: 'Bugün', gplayCode: senderName };
+  }else{
+    const gplayCode = (document.getElementById('gplayCode')||{}).value?.trim() || '';
+    if(!gplayCode){ toast('Lütfen Google Play kodunu gir','error'); return; }
+    reqData = { uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı', amount: topupSelected, method: 'Google Play TL', status: 'Bekliyor', date: 'Bugün', gplayCode: gplayCode };
+  }
   if(FIREBASE_ENABLED && state.uid){
     try{
       reqData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -8116,7 +8187,7 @@ function adminTabContent(tab){
     const reqs = state.paymentRequests;
     if(!reqs.length) return '<div class="empty-state"><div class="em-icon">'+ic('card',30)+'</div><b>Bekleyen ödeme talebi yok</b></div>';
     return `<div class="data-table-wrap"><table class="data-table">
-      <tr><th>Talep ID</th><th>Kullanıcı</th><th>Tutar</th><th>Yöntem</th><th>Kod / Not</th><th>Durum</th><th>İşlem</th></tr>
+      <tr><th>Talep ID</th><th>Kullanıcı</th><th>Tutar</th><th>Yöntem</th><th>Kod / Gönderen</th><th>Durum</th><th>İşlem</th></tr>
       ${reqs.map(r=>`<tr><td class="mono">${r.id}</td><td>${esc(r.userName||r.uid||'-')}</td><td>${fmt(r.amount)}</td><td>${esc(r.method||'Google Play TL')}</td>
         <td class="mono">${r.gplayCode?esc(r.gplayCode):'—'}</td>
         <td><span class="pill ${r.status==='Onaylandı'?'pill-success':r.status==='Reddedildi'?'pill-danger':'pill-warning'}">${r.status}</span></td>
@@ -8977,6 +9048,32 @@ async function submitWithdrawalNote(id){
   render();
 }
 
+/* ---------------- ÜST KAMPANYA ŞERİDİ ---------------- */
+const PROMO_BAR_KEY = 'nadas_promo_bar_hidden';
+function promoBarHtml(){
+  try{ if(sessionStorage.getItem(PROMO_BAR_KEY)==='1') return ''; }catch(e){}
+  return `
+  <div class="promo-bar" role="region" aria-label="Kampanya">
+    <div class="promo-bar-inner">
+      <button class="promo-bar-main" onclick="promoBarClick()">
+        <span class="promo-bar-gift" aria-hidden="true">🎁</span>
+        <span class="promo-bar-text">Hesabına <b>₺500</b> bakiye yükle, <b>₺250 HEDİYE</b> kazan!</span>
+        <span class="promo-bar-cta">Hemen Yükle</span>
+      </button>
+      <button class="promo-bar-close" onclick="closePromoBar()" aria-label="Kampanya şeridini kapat">✕</button>
+    </div>
+  </div>`;
+}
+function promoBarClick(){
+  if(state.loggedIn){ openTopupModal(); }
+  else { openAuthModal('register'); toast('Kampanyadan yararlanmak için önce kayıt ol / giriş yap'); }
+}
+function closePromoBar(){
+  try{ sessionStorage.setItem(PROMO_BAR_KEY,'1'); }catch(e){}
+  const el = document.querySelector('.promo-bar');
+  if(el) el.remove();
+}
+
 /* ---------------- ANA RENDER ---------------- */
 function currentViewHtml(){
   switch(state.view){
@@ -8998,6 +9095,7 @@ function currentViewHtml(){
 }
 function render(){
   document.getElementById('app').innerHTML = `
+    ${promoBarHtml()}
     <div id="headerRoot">${renderHeader()}</div>
     <main>${currentViewHtml()}</main>
     ${renderFooter()}
