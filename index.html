@@ -2470,6 +2470,10 @@ const state = {
   cart:[],           // {id, qty}
   favorites: FIREBASE_ENABLED ? new Set() : new Set(MOCK_FAVORITES),
   balance: FIREBASE_ENABLED ? 0 : MOCK_BALANCE,
+  // withdrawableBalance: SADECE ilan satışından kazanılan tutarlar buraya işlenir.
+  // Kullanıcının yatırdığı (top-up) para "balance" alanında kalır ve harcanabilir
+  // ama ASLA çekilemez; para çekme talepleri sadece bu alandan yapılabilir.
+  withdrawableBalance: FIREBASE_ENABLED ? 0 : (typeof MOCK_WITHDRAWABLE_BALANCE!=='undefined' ? MOCK_WITHDRAWABLE_BALANCE : 0),
   balanceHistory: FIREBASE_ENABLED ? [] : MOCK_BALANCE_HISTORY.slice(),
   orders: FIREBASE_ENABLED ? [] : MOCK_ORDERS.slice(),
   mySales: FIREBASE_ENABLED ? [] : MOCK_MY_SALES.slice(),
@@ -2515,6 +2519,7 @@ const state = {
    giriş/çıkışta kişisel alanları sıfırlar. */
 function resetPersonalState(){
   state.balance = 0;
+  state.withdrawableBalance = 0;
   state.balanceHistory = [];
   state.withdrawalRequests = [];
   state.orders = [];
@@ -2575,6 +2580,7 @@ function saveLocalAppState(){
       userPhone: state.userPhone,
       verified: state.verified,
       balance: state.balance,
+      withdrawableBalance: state.withdrawableBalance,
       balanceHistory: state.balanceHistory,
       orders: state.orders,
       mySales: state.mySales,
@@ -2611,6 +2617,7 @@ function loadLocalAppState(){
     if(typeof d.userPhone==='string') state.userPhone = d.userPhone;
     if(typeof d.verified==='boolean') state.verified = d.verified;
     if(typeof d.balance==='number' && !isNaN(d.balance)) state.balance = d.balance;
+    if(typeof d.withdrawableBalance==='number' && !isNaN(d.withdrawableBalance)) state.withdrawableBalance = d.withdrawableBalance;
     if(Array.isArray(d.balanceHistory)) state.balanceHistory = d.balanceHistory;
     if(Array.isArray(d.orders)) state.orders = d.orders;
     if(Array.isArray(d.mySales)) state.mySales = d.mySales;
@@ -2868,6 +2875,7 @@ function watchAuthState(){
           state.shopName = d.shopName || '';
           state.photoURL = d.photoURL || '';
           state.balance = typeof d.balance==='number' ? d.balance : 0;
+          state.withdrawableBalance = typeof d.withdrawableBalance==='number' ? d.withdrawableBalance : 0;
           state.isAdmin = d.role === 'admin';
           state.userPhone = d.phone || '';
           state.verified = !!d.verified;
@@ -2877,6 +2885,7 @@ function watchAuthState(){
           // Firestore'da kullanıcı dokümanı yoksa (ör. eski/eksik kayıt) sıfırdan başlat
           state.userName = state.userEmail;
           state.balance = 0;
+          state.withdrawableBalance = 0;
           state.isAdmin = false;
         }
       }catch(err){ console.error('Kullanıcı verisi okunamadı:', err); }
@@ -3155,6 +3164,7 @@ function watchOwnUserDoc(){
     if(!snap.exists) return;
     const d = snap.data();
     if(typeof d.balance==='number' && !isNaN(d.balance)) state.balance = d.balance;
+    if(typeof d.withdrawableBalance==='number' && !isNaN(d.withdrawableBalance)) state.withdrawableBalance = d.withdrawableBalance;
     if(typeof d.hasPass==='boolean') state.hasPass = d.hasPass;
     state.passExpiry = d.passExpiry || null;
     if(typeof d.verified==='boolean') state.verified = d.verified;
@@ -3789,7 +3799,7 @@ function accountPanelGo(view, params){
 function renderAccountPanel(){
   if(!state.panelsOpen.accountPanel) return '';
   const successCount = (state.orders?state.orders.length:0) + (state.mySales?state.mySales.length:0);
-  const withdrawable = state.balance;
+  const withdrawable = state.withdrawableBalance||0;
   const actionRows = [
     {icon:'chart', label:'Kontrol Panelim', onclick:"accountPanelGo('account',{tab:'profil'})"},
     {icon:'box', label:'Siparişlerim', onclick:"accountPanelGo('account',{tab:'siparisler'})"},
@@ -5998,8 +6008,10 @@ function submitWithdrawRequest(){
   if(!amount || amount<=0){ toast('Lütfen geçerli bir tutar gir','error'); return; }
   const myReqs = (state.withdrawalRequests||[]).filter(r=>r.uid===(state.uid||'demo-user'));
   const pendingTotal = myReqs.filter(r=>r.status==='Bekliyor').reduce((s,r)=>s+(r.amount||0),0);
-  const withdrawableNow = Math.max(0, state.balance - pendingTotal);
-  if(amount > withdrawableNow){ toast('Yetersiz bakiye — bu tutarda talep oluşturamazsın.','error'); return; }
+  // Sadece ilan satışından kazanılan (withdrawableBalance) tutar çekilebilir;
+  // kullanıcının yatırdığı bakiye (state.balance) para çekme talebine dahil edilmez.
+  const withdrawableNow = Math.max(0, (state.withdrawableBalance||0) - pendingTotal);
+  if(amount > withdrawableNow){ toast('Yetersiz çekilebilir bakiye — bu tutarda talep oluşturamazsın.','error'); return; }
   createWithdrawRequest({fullName, iban, amount});
 }
 async function createWithdrawRequest({fullName, iban, amount}){
@@ -6345,7 +6357,9 @@ async function dealActionFirestore(txId, action){
     if(res.status==='approved' && !d.paidOut){
       patch.paidOut = true; patch.rejectionDeadlineAt = null;
       if(sellerSnap && sellerSnap.exists){
-        tx.update(sellerRef, { balance: firebase.firestore.FieldValue.increment(d.amount||0), successfulDeals: firebase.firestore.FieldValue.increment(1) });
+        // Satış kazancı satıcının YATIRDIĞI bakiyeye değil, ayrı ve SADECE
+        // çekilebilen "withdrawableBalance" alanına eklenir.
+        tx.update(sellerRef, { withdrawableBalance: firebase.firestore.FieldValue.increment(d.amount||0), successfulDeals: firebase.firestore.FieldValue.increment(1) });
       }
     }else if(res.status==='rejected' && !d.refunded){
       patch.refunded = true; patch.rejectionDeadlineAt = null;
@@ -6394,9 +6408,10 @@ function dealActionLocal(txId, role, action){
   d.status = res.status; d.updatedAtMs = Date.now();
   if(res.status==='approved' && !d.paidOut){
     d.paidOut = true; d.rejectionDeadlineAt=null;
-    state.balance += d.amount; // yerel demo: alıcı+satıcı aynı bakiye/kişi
-    state.balanceHistory.unshift({id:Date.now(), type:`İşlem Onaylandı — "${d.listingTitle}"`, amount:d.amount, date:'Bugün', status:'Tamamlandı'});
-    toast('İşlem karşılıklı onaylandı, tutar satıcıya aktarıldı.','success');
+    // Satış kazancı yatırılan bakiyeye değil, sadece çekilebilir bakiyeye eklenir.
+    state.withdrawableBalance = (state.withdrawableBalance||0) + d.amount;
+    state.balanceHistory.unshift({id:Date.now(), type:`İşlem Onaylandı — "${d.listingTitle}" (Çekilebilir Bakiyeye Eklendi)`, amount:d.amount, date:'Bugün', status:'Tamamlandı'});
+    toast('İşlem karşılıklı onaylandı, tutar çekilebilir bakiyene aktarıldı.','success');
   }else if(res.status==='rejected' && !d.refunded){
     d.refunded = true; d.rejectionDeadlineAt=null;
     state.balance += d.amount;
@@ -7649,11 +7664,12 @@ function accountTabContent(tab){
   if(tab==='paracek'){
     const myReqs = (state.withdrawalRequests||[]).filter(r=>r.uid===(state.uid||'demo-user'));
     const pendingTotal = myReqs.filter(r=>r.status==='Bekliyor').reduce((s,r)=>s+(r.amount||0),0);
-    const withdrawableNow = Math.max(0, state.balance - pendingTotal);
+    // Sadece ilan satışından kazanılan (withdrawableBalance) tutar çekilebilir.
+    const withdrawableNow = Math.max(0, (state.withdrawableBalance||0) - pendingTotal);
     return `
     <div class="wiz-card" style="background:linear-gradient(135deg,#1a2440,#0b1224);margin-bottom:18px;">
-      <div class="small text-mid">Kullanılabilir Bakiye</div>
-      <div class="disp" style="font-size:34px;font-family:'JetBrains Mono';color:var(--orange);margin:6px 0 6px;">${fmt(state.balance)}</div>
+      <div class="small text-mid">Çekilebilir Bakiye (İlan Satış Kazancın)</div>
+      <div class="disp" style="font-size:34px;font-family:'JetBrains Mono';color:var(--orange);margin:6px 0 6px;">${fmt(state.withdrawableBalance||0)}</div>
       ${pendingTotal>0?`<p class="small text-mid" style="margin-bottom:0;">Beklemede olan çekim taleplerin: <b style="color:var(--hi);">${fmt(pendingTotal)}</b> · Yeni talep için kullanılabilir: <b style="color:var(--hi);">${fmt(withdrawableNow)}</b></p>`:''}
     </div>
     <div class="wiz-card" style="margin-bottom:18px;">
@@ -8955,11 +8971,12 @@ async function adminRejectPayment(id){
 
 /* ---------------- ADMIN: PARA ÇEKME TALEPLERİ ----------------
    Onaylama, tek bir Firestore transaction içinde: (1) talebin hâlâ 'Bekliyor'
-   durumda olduğunu, (2) kullanıcının GÜNCEL bakiyesinin talep tutarına yetip
-   yetmediğini kontrol eder — yetmiyorsa işlem tamamen iptal edilir (kullanıcı
-   arada başka bir harcama yapmış olabilir). Yetiyorsa bakiyeden düşer, talebi
-   'Onaylandı' yapar ve işlem geçmişine kaydeder. Reddedilirse bakiyeye
-   dokunulmaz. */
+   durumda olduğunu, (2) kullanıcının GÜNCEL çekilebilir bakiyesinin (SADECE
+   ilan satışından kazanılan withdrawableBalance — yatırılan balance DEĞİL)
+   talep tutarına yetip yetmediğini kontrol eder — yetmiyorsa işlem tamamen
+   iptal edilir (kullanıcı arada başka bir harcama/çekim yapmış olabilir).
+   Yetiyorsa withdrawableBalance'tan düşer, talebi 'Onaylandı' yapar ve işlem
+   geçmişine kaydeder. Reddedilirse hiçbir bakiyeye dokunulmaz. */
 async function adminApproveWithdrawal(id){
   const req = (state.withdrawalRequests||[]).find(r=>r.id===id);
   if(!req || req.status!=='Bekliyor') return;
@@ -8972,18 +8989,20 @@ async function adminApproveWithdrawal(id){
         const data = reqSnap.data();
         const userRef = fbDb.collection('users').doc(data.uid);
         const userSnap = await tx.get(userRef);
-        const currentBalance = (userSnap.exists && typeof userSnap.data().balance==='number') ? userSnap.data().balance : 0;
-        if(currentBalance < data.amount) throw new Error('Kullanıcının bakiyesi bu tutar için yetersiz.');
-        tx.update(userRef, { balance: firebase.firestore.FieldValue.increment(-data.amount) });
+        // Para çekme SADECE ilan satışından kazanılan (withdrawableBalance) tutardan
+        // yapılabilir; yatırılan bakiyeye (balance) burada dokunulmaz.
+        const currentWithdrawable = (userSnap.exists && typeof userSnap.data().withdrawableBalance==='number') ? userSnap.data().withdrawableBalance : 0;
+        if(currentWithdrawable < data.amount) throw new Error('Kullanıcının çekilebilir bakiyesi bu tutar için yetersiz.');
+        tx.update(userRef, { withdrawableBalance: firebase.firestore.FieldValue.increment(-data.amount) });
         tx.update(reqRef, { status:'Onaylandı' });
         const txRef = fbDb.collection('transactions').doc();
         tx.set(txRef, { userName: data.userName||data.uid, uid:data.uid, type:'Para Çekme Onayı', amount:-data.amount, date:'Bugün', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       });
-      if(state.uid === req.uid){ state.balance -= req.amount; }
+      if(state.uid === req.uid){ state.withdrawableBalance -= req.amount; }
     }catch(err){ toast('Onay işlemi başarısız: '+authErrorMessage(err),'error'); return; }
   }else{
-    if(state.balance < req.amount && (state.uid === req.uid || req.uid==='demo-user')){ toast('Kullanıcının bakiyesi bu tutar için yetersiz.','error'); return; }
-    if(state.uid === req.uid || req.uid==='demo-user'){ state.balance -= req.amount; }
+    if((state.withdrawableBalance||0) < req.amount && (state.uid === req.uid || req.uid==='demo-user')){ toast('Kullanıcının çekilebilir bakiyesi bu tutar için yetersiz.','error'); return; }
+    if(state.uid === req.uid || req.uid==='demo-user'){ state.withdrawableBalance -= req.amount; }
   }
   req.status='Onaylandı';
   state.globalTransactions.unshift({id:'TX-'+Date.now(), userName:req.userName, type:'Para Çekme Onayı', amount:-req.amount, date:'Bugün'});
