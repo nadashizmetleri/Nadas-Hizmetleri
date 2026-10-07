@@ -8095,6 +8095,16 @@ function adminTabContent(tab){
       <button class="btn btn-primary" id="sendBalanceBtn" onclick="adminSendBalance()">${ic('send',14)} Bakiye Gönder</button>
       ${!FIREBASE_ENABLED?`<p class="small" style="color:var(--warning);margin-top:10px;">Firebase yapılandırılmadığından bu işlem yalnızca Firebase bağlandığında gerçek kullanıcılara uygulanabilir.</p>`:''}
     </div>
+    <div class="wiz-card" style="margin-bottom:16px;">
+      <h2>${ic('checkCircle',16)} Profil Doğrulama</h2>
+      <p class="hint">Kullanıcının Gmail / e-posta adresini yaz, profilini doğrula. Doğrulanınca kullanıcının profilinde "Doğrulanmadı" yerine "Doğrulandı ✓" görünür ve ilanlarında Güvenilir rozeti çıkar.</p>
+      <div class="field"><label>Kullanıcı E-postası (Gmail)</label><input id="verifyProfileEmail" type="email" placeholder="ornek@gmail.com"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-success" id="verifyProfileBtn" onclick="adminSetProfileVerified(true)">${ic('checkCircle',14)} Doğrula</button>
+        <button class="btn btn-ghost" id="unverifyProfileBtn" style="color:var(--danger);border:1px solid var(--border);" onclick="adminSetProfileVerified(false)">Doğrulamayı Kaldır</button>
+      </div>
+      ${!FIREBASE_ENABLED?`<p class="small" style="color:var(--warning);margin-top:10px;">Firebase yapılandırılmadığından bu işlem yalnızca Firebase bağlandığında gerçek kullanıcılara uygulanabilir.</p>`:''}
+    </div>
     <div class="wiz-card">
       <h2>${ic('crown',16)} Hesap Pass Ver</h2>
       <p class="hint">Kullanıcının e-posta adresini gir, hesabına doğrudan Hesap Pass tanımla.</p>
@@ -8839,6 +8849,28 @@ async function adminSendBalance(){
   if(btn){ btn.disabled=false; btn.textContent='Bakiye Gönder'; }
   document.getElementById('sendBalanceEmail').value='';
   document.getElementById('sendBalanceAmount').value='';
+  render();
+}
+async function adminSetProfileVerified(flag){
+  const input = document.getElementById('verifyProfileEmail');
+  const email = ((input&&input.value)||'').trim().toLowerCase();
+  if(!email){ toast('Lütfen bir e-posta gir','error'); return; }
+  if(!FIREBASE_ENABLED){ toast('Bu özellik gerçek kullanıcı hesapları için Firebase yapılandırması gerektirir.','error'); return; }
+  const btn = document.getElementById(flag?'verifyProfileBtn':'unverifyProfileBtn');
+  const oldLabel = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled=true; btn.textContent='İşleniyor...'; }
+  const restore = ()=>{ if(btn){ btn.disabled=false; btn.innerHTML=oldLabel; } };
+  try{
+    const snap = await fbDb.collection('users').where('email','==',email).limit(1).get();
+    if(snap.empty){ toast('Bu e-postaya ait kullanıcı bulunamadı','error'); restore(); return; }
+    const doc = snap.docs[0];
+    const userName = doc.data().name || email;
+    await doc.ref.update({ verified: !!flag });
+    if(state.uid === doc.id){ state.verified = !!flag; }
+    toast(flag ? `${userName} profili doğrulandı ✓` : `${userName} profilinin doğrulaması kaldırıldı`, 'success');
+  }catch(err){ toast('İşlem yapılamadı: '+authErrorMessage(err),'error'); restore(); return; }
+  restore();
+  if(input) input.value='';
   render();
 }
 async function adminGrantPass(){
