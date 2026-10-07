@@ -9117,14 +9117,84 @@ function currentViewHtml(){
     default: return viewHome();
   }
 }
+/* ---- YUMUŞAK YENİDEN ÇİZİM (morph) ----
+   Eskiden render() tüm #app'i innerHTML ile sıfırdan kuruyordu. Firestore
+   onSnapshot güncellemeleri sık geldiği için, ilan/form doldururken yazılan
+   metinler, imleç ve mobil klavye her güncellemede kayboluyordu.
+   Artık yeni HTML mevcut DOM ile karşılaştırılıp sadece değişen kısımlar
+   güncellenir; kullanıcının yazdığı input/textarea/select değerleri ve odak
+   korunur. Şablondaki varsayılan değer DEĞİŞTİYSE (ör. form sıfırlandı) alan
+   yeni değere güncellenir. */
+function _morphAttrs(f,t){
+  Array.from(f.attributes).forEach(function(a){ if(!t.hasAttribute(a.name)) f.removeAttribute(a.name); });
+  Array.from(t.attributes).forEach(function(a){ if(f.getAttribute(a.name)!==a.value) f.setAttribute(a.name,a.value); });
+}
+function _morphNode(f,t){
+  if(f.nodeType!==t.nodeType || f.nodeName!==t.nodeName){ f.parentNode.replaceChild(t,f); return; }
+  if(f.nodeType!==1){ if(f.nodeValue!==t.nodeValue) f.nodeValue=t.nodeValue; return; }
+  const tag=f.nodeName;
+  if(tag==='INPUT'){
+    const type=(f.getAttribute('type')||'text').toLowerCase();
+    if(type==='file'){ _morphAttrs(f,t); return; }
+    if(type==='checkbox'||type==='radio'){
+      const dirty=f.checked!==f.defaultChecked, oldDef=f.defaultChecked, cur=f.checked;
+      _morphAttrs(f,t);
+      f.checked = (dirty && t.defaultChecked===oldDef) ? cur : t.defaultChecked;
+      return;
+    }
+    const dirty=f.value!==f.defaultValue, oldDef=f.defaultValue, cur=f.value;
+    _morphAttrs(f,t);
+    const newDef=t.getAttribute('value')||'';
+    if(!(dirty && newDef===oldDef) && f.value!==newDef) f.value=newDef;
+    else if(dirty && newDef===oldDef && f.value!==cur) f.value=cur;
+    return;
+  }
+  if(tag==='TEXTAREA'){
+    const dirty=f.value!==f.defaultValue, oldDef=f.defaultValue, cur=f.value;
+    _morphAttrs(f,t);
+    const newDef=t.defaultValue;
+    if(dirty && newDef===oldDef){ return; }
+    if(f.defaultValue!==newDef) f.defaultValue=newDef;
+    if(f.value!==newDef) f.value=newDef;
+    return;
+  }
+  if(tag==='SELECT'){
+    const defIdx=function(sel){ for(let i=0;i<sel.options.length;i++){ if(sel.options[i].defaultSelected) return i; } return 0; };
+    const oldDef=defIdx(f), dirty=f.selectedIndex!==oldDef, cur=f.selectedIndex;
+    _morphAttrs(f,t);
+    _morphChildren(f,t);
+    const newDef=defIdx(f);
+    f.selectedIndex = (dirty && newDef===oldDef && cur<f.options.length) ? cur : newDef;
+    return;
+  }
+  _morphAttrs(f,t);
+  _morphChildren(f,t);
+}
+function _morphChildren(from,to){
+  const fk=Array.from(from.childNodes), tk=Array.from(to.childNodes);
+  for(let i=0;i<tk.length;i++){
+    if(i>=fk.length) from.appendChild(tk[i]);
+    else _morphNode(fk[i],tk[i]);
+  }
+  for(let i=fk.length-1;i>=tk.length;i--) from.removeChild(fk[i]);
+}
 function render(){
-  document.getElementById('app').innerHTML = `
+  const html = `
     ${promoBarHtml()}
     <div id="headerRoot">${renderHeader()}</div>
     <main>${currentViewHtml()}</main>
     ${renderFooter()}
     ${renderBottomNav()}
   `;
+  const appEl = document.getElementById('app');
+  try{
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    _morphChildren(appEl, tmp);
+  }catch(err){
+    console.error('morph hatası, tam yeniden çizim yapılıyor:', err);
+    appEl.innerHTML = html;
+  }
   renderCatMenuRoot();
   renderToasts();
   scrollMsgThreadToBottom();
