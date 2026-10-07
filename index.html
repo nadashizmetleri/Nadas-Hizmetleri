@@ -5892,7 +5892,7 @@ async function sendPasswordReset(){
     toast('Gönderilemedi: '+authErrorMessage(err), 'error');
   }
 }
-const TOPUP_IBAN = 'TR630006400000180001971609';
+const TOPUP_IBAN = 'TR050082900009492117004789';
 const TOPUP_IBAN_NAME = 'Muhammed Doğan';
 let topupMethod = 'gplay';
 function openTopupModal(){
@@ -5947,9 +5947,14 @@ function renderTopupModal(){
             </div>
           </div>
           <div class="field" style="margin-top:10px;margin-bottom:0;">
+            <label>Açıklama</label>
+            <div class="mono" style="font-size:13px;">Boş bırakın</div>
+          </div>
+          <div class="field" style="margin-top:10px;margin-bottom:0;">
             <label>Gönderen Ad Soyad</label>
             <input id="ibanSenderName" type="text" placeholder="Havaleyi yaptığın ad soyad" autocomplete="off">
           </div>
+          <p class="small text-mid" style="margin-top:10px;"><b>Not:</b> Bakiyeniz en geç 15 dakika içerisinde hesabınıza yatacaktır. Gönderen ad soyad, site hesabınızdaki ad soyad ile aynı olduğunda bakiye otomatik şekilde hesabınıza yatar.</p>
           <p class="small text-mid" style="margin-top:10px;">Gönderen ad soyad, gönderdiğin tutarla eşleşmezse talebin <b>reddedilebilir</b>. Havale/EFT talebiniz <b>admin onayına</b> düşer, onaylanmadan bakiyenize yansımaz.</p>
         </div>
       </div>`}
