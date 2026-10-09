@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nadashizmetleri.com.tr/sitemap.xml
