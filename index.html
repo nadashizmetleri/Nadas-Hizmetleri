@@ -103,7 +103,7 @@ a{color:inherit;text-decoration:none;}
 @media(max-width:479px){.wrap{padding:0 14px;} .icon-btn{width:34px;height:34px;} .avatar{width:32px;height:32px;} .topbar-inner{gap:6px;padding:12px 12px;} .topbar-side{gap:5px;} .logo-text{font-size:14px;} .logo-text span{font-size:8.5px;} .logo-mark{width:32px;height:32px;font-size:14px;} .user-info-btn{padding:5px 8px 5px 5px;gap:6px;} .user-info-btn .ub-amount{font-size:11px;}}
 @media(max-width:359px){.logo-text span{display:none;}}
 
-/* ---------- ÜST KAMPANYA ŞERİDİ (500 TL yükle → 250 TL hediye) ---------- */
+/* ---------- ÜST KAMPANYA ŞERİDİ (basamaklı yükleme bonusu) ---------- */
 .promo-bar{
   position:relative;z-index:51;
   background:linear-gradient(90deg,#FF7A29,#FFA53D 50%,#1FCF6E);
@@ -1184,6 +1184,30 @@ select.sortsel{background:var(--panel);border:1px solid var(--border);border-rad
 .amount-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0;}
 .amount-chip{padding:12px 4px;text-align:center;border:1px solid var(--border);border-radius:10px;background:var(--elevated);font-family:'JetBrains Mono';font-weight:700;font-size:13px;}
 .amount-chip.selected{border-color:var(--orange);background:var(--orange-soft);color:var(--orange);}
+.amount-chip{position:relative;cursor:pointer;transition:border-color .15s,background .15s,transform .1s;}
+.amount-chip:active{transform:scale(.97);}
+.amount-chip .chip-bonus{display:block;margin-top:3px;font-family:'Inter',sans-serif;font-size:10.5px;font-weight:700;color:var(--green);letter-spacing:.2px;}
+.amount-chip .chip-bonus.none{color:var(--low);font-weight:500;}
+.amount-chip.selected .chip-bonus{color:#8CFFC2;}
+/* Bonus basamak kartı */
+.bonus-card{margin:2px 0 14px;padding:14px;border-radius:var(--r-md);border:1px solid rgba(31,207,110,.35);background:linear-gradient(135deg,rgba(31,207,110,.12),rgba(255,122,41,.08));position:relative;overflow:hidden;}
+.bonus-card::after{content:"🎁";position:absolute;right:10px;top:6px;font-size:34px;opacity:.12;pointer-events:none;}
+.bonus-head{display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;margin-bottom:12px;}
+.bonus-head .bh-tag{font-size:10px;font-weight:700;background:var(--green);color:#04130B;padding:2px 7px;border-radius:999px;letter-spacing:.3px;}
+.bonus-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;position:relative;}
+.bonus-step{text-align:center;padding:8px 2px 7px;border-radius:10px;border:1px solid var(--border);background:rgba(5,8,16,.45);transition:all .2s;}
+.bonus-step .bs-amt{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mid);font-weight:600;}
+.bonus-step .bs-gift{display:block;margin-top:2px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--low);}
+.bonus-step.reached{border-color:rgba(31,207,110,.65);background:rgba(31,207,110,.16);box-shadow:0 0 14px rgba(31,207,110,.18);}
+.bonus-step.reached .bs-amt{color:var(--hi);}
+.bonus-step.reached .bs-gift{color:var(--green);}
+.bonus-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.08);margin:12px 0 10px;overflow:hidden;}
+.bonus-bar > i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--orange),var(--green));transition:width .3s ease;}
+.bonus-sum{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;color:var(--mid);}
+.bonus-sum b{color:var(--hi);}
+.bonus-sum .bonus-total{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--green);white-space:nowrap;}
+.bonus-hint{margin-top:8px;font-size:11.5px;color:var(--mid);line-height:1.45;}
+.bonus-hint b{color:var(--orange);}
 .chip-select-group{display:flex;flex-wrap:wrap;gap:8px;}
 .chip-checkbox{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--elevated);border-radius:999px;padding:8px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;user-select:none;}
 .chip-checkbox input{accent-color:var(--blue);width:14px;height:14px;flex-shrink:0;}
@@ -2554,6 +2578,7 @@ function resetPersonalState(){
   state.cart = [];
   state.userPhone = '';
   state.verified = false;
+  state.successAdjust = 0;
   state.hasPass = false;
   state.passExpiry = null;
   state.shopName = '';
@@ -2616,6 +2641,7 @@ function loadLocalAppState(){
     if(typeof d.photoURL==='string') state.photoURL = d.photoURL;
     if(typeof d.userPhone==='string') state.userPhone = d.userPhone;
     if(typeof d.verified==='boolean') state.verified = d.verified;
+    if(typeof d.successAdjust==='number') state.successAdjust = d.successAdjust;
     if(typeof d.balance==='number' && !isNaN(d.balance)) state.balance = d.balance;
     if(typeof d.withdrawableBalance==='number' && !isNaN(d.withdrawableBalance)) state.withdrawableBalance = d.withdrawableBalance;
     if(Array.isArray(d.balanceHistory)) state.balanceHistory = d.balanceHistory;
@@ -2879,6 +2905,7 @@ function watchAuthState(){
           state.isAdmin = d.role === 'admin';
           state.userPhone = d.phone || '';
           state.verified = !!d.verified;
+          state.successAdjust = Number(d.successAdjust)||0;
           state.hasPass = !!d.hasPass && (!d.passExpiry || d.passExpiry > Date.now());
           state.passExpiry = d.passExpiry || null;
         }else{
@@ -3168,6 +3195,7 @@ function watchOwnUserDoc(){
     if(typeof d.hasPass==='boolean') state.hasPass = d.hasPass;
     state.passExpiry = d.passExpiry || null;
     if(typeof d.verified==='boolean') state.verified = d.verified;
+    state.successAdjust = Number(d.successAdjust)||0;
     render();
   }, function(err){ console.error('Bakiye dinlenemedi:', err); });
 }
@@ -3798,7 +3826,9 @@ function accountPanelGo(view, params){
 }
 function renderAccountPanel(){
   if(!state.panelsOpen.accountPanel) return '';
-  const successCount = (state.orders?state.orders.length:0) + (state.mySales?state.mySales.length:0);
+  const autoSuccess = (state.orders?state.orders.length:0) + (state.mySales?state.mySales.length:0);
+  const adjust = Number(state.successAdjust)||0;
+  const successCount = Math.max(0, autoSuccess + adjust);
   const withdrawable = state.withdrawableBalance||0;
   const actionRows = [
     {icon:'chart', label:'Kontrol Panelim', onclick:"accountPanelGo('account',{tab:'profil'})"},
@@ -3827,7 +3857,7 @@ function renderAccountPanel(){
             <div class="avatar ap-avatar">${state.photoURL?`<img src="${esc(state.photoURL)}" alt="">`:esc(initials(displayName()))}</div>
             <div>
               <div class="ap-username">${esc(displayName())}</div>
-              <div class="ap-success">${ic('check',11)} ${successCount} BAŞARILI İŞLEM</div>
+              <div class="ap-success">${ic('check',11)} ${successCount} BAŞARILI İŞLEM${adjust?` <span style="opacity:.75;font-weight:500;">(${autoSuccess} otomatik ${adjust>0?'+':'−'} ${Math.abs(adjust)} yönetici düzeltmesi)</span>`:''}</div>
             </div>
           </div>
           <div class="ap-balance-row">
@@ -5815,6 +5845,56 @@ async function userToggleFeatured(id){
 
 /* ---------------- BAKİYE YÜKLE MODAL ---------------- */
 let topupSelected = 500;
+/* ---------------- YÜKLEME BONUSU (basamaklı) ----------------
+   Her ₺500'lük basamak için ₺100 hediye bakiye; en fazla ₺5.000 yüklemede
+   ₺1.000 (daha fazlası için bonus sabit kalır).
+   ₺500 → ₺100 · ₺1.000 → ₺200 · ₺2.500 → ₺500 · ₺5.000 → ₺1.000
+   Bonus talep onaylandığında (adminApprovePayment) tutardan SUNUCU/ADMIN
+   tarafında yeniden hesaplanır; kullanıcının gönderdiği bir değere güvenilmez. */
+const TOPUP_BONUS_STEP = 500;
+const TOPUP_BONUS_PER_STEP = 100;
+const TOPUP_BONUS_MAX_AMOUNT = 5000;
+const TOPUP_BONUS_MAX = 1000;
+const TOPUP_BONUS_LADDER = [500,1000,2500,5000];
+function topupBonus(amount){
+  amount = Math.floor(Number(amount)||0);
+  if(amount < TOPUP_BONUS_STEP) return 0;
+  const eff = Math.min(amount, TOPUP_BONUS_MAX_AMOUNT);
+  return Math.min(Math.floor(eff/TOPUP_BONUS_STEP)*TOPUP_BONUS_PER_STEP, TOPUP_BONUS_MAX);
+}
+function topupBonusHintText(amount){
+  amount = Math.floor(Number(amount)||0);
+  if(amount >= TOPUP_BONUS_MAX_AMOUNT) return '🎉 Maksimum bonusa ulaştın: <b>'+fmt(TOPUP_BONUS_MAX)+'</b> hediye!';
+  const nextAmt = (Math.floor(amount/TOPUP_BONUS_STEP)+1)*TOPUP_BONUS_STEP;
+  const gain = topupBonus(nextAmt) - topupBonus(amount);
+  const diff = nextAmt - amount;
+  if(amount < TOPUP_BONUS_STEP) return 'Hediye için en az <b>'+fmt(TOPUP_BONUS_STEP)+'</b> yükle: <b>+'+fmt(TOPUP_BONUS_PER_STEP)+'</b> bonus kazan.';
+  return fmt(diff)+' daha yüklersen bonusun <b>+'+fmt(gain)+'</b> artar ('+fmt(nextAmt)+' → '+fmt(topupBonus(nextAmt))+' hediye).';
+}
+function topupBonusCardHtml(){
+  const amt = Math.floor(Number(topupSelected)||0), b = topupBonus(amt);
+  return `
+  <div class="bonus-card" id="bonusCard">
+    <div class="bonus-head">🎁 Yükle, Hediye Kazan <span class="bh-tag">BONUS</span></div>
+    <div class="bonus-steps">
+      ${TOPUP_BONUS_LADDER.map(a=>`<div class="bonus-step ${amt>=a?'reached':''}" data-amt="${a}"><span class="bs-amt">${fmt(a)}</span><span class="bs-gift">+${fmt(topupBonus(a))}</span></div>`).join('')}
+    </div>
+    <div class="bonus-bar"><i id="bonusBarFill" style="width:${Math.min(100,amt/TOPUP_BONUS_MAX_AMOUNT*100)}%"></i></div>
+    <div class="bonus-sum">
+      <span>Yükleyeceğin: <b id="bonusAmt">${fmt(amt)}</b> + <b id="bonusGift" style="color:var(--green)">${fmt(b)}</b> hediye</span>
+      <span class="bonus-total" id="bonusTotal">${fmt(amt+b)}</span>
+    </div>
+    <div class="bonus-hint" id="bonusHint">${topupBonusHintText(amt)}</div>
+  </div>`;
+}
+/* Modal'ı yeniden çizmeden (input odağı kaybolmasın diye) bonus alanlarını günceller */
+function updateTopupBonusUI(){
+  const amt = Math.floor(Number(topupSelected)||0), b = topupBonus(amt);
+  const set=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  set('bonusAmt', fmt(amt)); set('bonusGift', fmt(b)); set('bonusTotal', fmt(amt+b)); set('bonusHint', topupBonusHintText(amt));
+  const bar=document.getElementById('bonusBarFill'); if(bar) bar.style.width=Math.min(100,amt/TOPUP_BONUS_MAX_AMOUNT*100)+'%';
+  document.querySelectorAll('#bonusCard .bonus-step').forEach(el=>el.classList.toggle('reached', amt>=Number(el.dataset.amt)));
+}
 function openAuthModal(mode){
   mode = mode || 'login';
   const isLogin = mode==='login';
@@ -5907,11 +5987,12 @@ function renderTopupModal(){
   <div class="overlay" onclick="if(event.target===this) closeModal()">
     <div class="modal">
       <div class="modal-head"><h3>${ic('wallet',16)} Bakiye Yükle</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
-      <p class="small text-mid">Yüklemek istediğin tutarı seç veya özel tutar gir.</p>
+      <p class="small text-mid">Yüklemek istediğin tutarı seç veya özel tutar gir. Ne kadar çok yüklersen o kadar çok hediye kazanırsın!</p>
       <div class="amount-grid" id="amountGrid">
-        ${[250,500,1000,2500,5000,10000].map(a=>`<div class="amount-chip ${a===topupSelected?'selected':''}" onclick="pickTopup(${a},this)">₺${a.toLocaleString('tr-TR')}</div>`).join('')}
+        ${[250,500,1000,2500,5000,10000].map(a=>{ const bb=topupBonus(a); return `<div class="amount-chip ${a===topupSelected?'selected':''}" onclick="pickTopup(${a},this)">₺${a.toLocaleString('tr-TR')}<span class="chip-bonus ${bb?'':'none'}">${bb?'+'+fmt(bb)+' hediye':'bonus yok'}</span></div>`; }).join('')}
       </div>
-      <div class="field"><label>Özel Tutar</label><input id="customTopup" type="number" placeholder="₺" value="${topupSelected||''}" oninput="topupSelected=Number(this.value)||0; document.querySelectorAll('.amount-chip').forEach(c=>c.classList.remove('selected'));"></div>
+      <div class="field"><label>Özel Tutar</label><input id="customTopup" type="number" inputmode="numeric" placeholder="₺" value="${topupSelected||''}" oninput="topupSelected=Number(this.value)||0; document.querySelectorAll('.amount-chip').forEach(c=>c.classList.remove('selected')); updateTopupBonusUI();"></div>
+      ${topupBonusCardHtml()}
       <div class="field">
         <label>Ödeme Yöntemi</label>
         <div style="display:flex;gap:8px;">
@@ -5968,7 +6049,7 @@ function copyText(text, btn){
   if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>toast('Kopyalanamadı, elle seçip kopyala.','error')); }
   else{ toast('Kopyalanamadı, elle seçip kopyala.','error'); }
 }
-function pickTopup(a, el){ topupSelected=a; document.querySelectorAll('.amount-chip').forEach(c=>c.classList.remove('selected')); el.classList.add('selected'); document.getElementById('customTopup').value=''; }
+function pickTopup(a, el){ topupSelected=a; document.querySelectorAll('.amount-chip').forEach(c=>c.classList.remove('selected')); el.classList.add('selected'); document.getElementById('customTopup').value=''; updateTopupBonusUI(); }
 async function confirmTopup(){
   if(!topupSelected || topupSelected<=0){ toast('Lütfen geçerli bir tutar gir','error'); return; }
   // ÖNEMLİ: Sitede şu an gerçek bir ödeme sağlayıcısı entegre değil. Google
@@ -5979,11 +6060,11 @@ async function confirmTopup(){
   if(topupMethod==='iban'){
     const senderName = (document.getElementById('ibanSenderName')||{}).value?.trim() || '';
     if(!senderName){ toast('Lütfen gönderen ad soyadını gir','error'); return; }
-    reqData = { uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı', amount: topupSelected, method: 'Havale/EFT (IBAN)', status: 'Bekliyor', date: 'Bugün', gplayCode: senderName };
+    reqData = { uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı', amount: topupSelected, bonus: topupBonus(topupSelected), method: 'Havale/EFT (IBAN)', status: 'Bekliyor', date: 'Bugün', gplayCode: senderName };
   }else{
     const gplayCode = (document.getElementById('gplayCode')||{}).value?.trim() || '';
     if(!gplayCode){ toast('Lütfen Google Play kodunu gir','error'); return; }
-    reqData = { uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı', amount: topupSelected, method: 'Google Play TL', status: 'Bekliyor', date: 'Bugün', gplayCode: gplayCode };
+    reqData = { uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı', amount: topupSelected, bonus: topupBonus(topupSelected), method: 'Google Play TL', status: 'Bekliyor', date: 'Bugün', gplayCode: gplayCode };
   }
   if(FIREBASE_ENABLED && state.uid){
     try{
@@ -5994,7 +6075,8 @@ async function confirmTopup(){
     state.paymentRequests.unshift(Object.assign({id:'PAY-'+Date.now()}, reqData));
   }
   closeModal();
-  toast('Yükleme talebin alındı, admin onayı sonrası bakiyene yansıyacak.','success');
+  const _bn = topupBonus(reqData.amount);
+  toast(_bn>0 ? `Yükleme talebin alındı. Onaylanınca ${fmt(reqData.amount)} + ${fmt(_bn)} hediye bakiyene eklenecek.` : 'Yükleme talebin alındı, admin onayı sonrası bakiyene yansıyacak.','success');
   render();
 }
 
@@ -7900,7 +7982,7 @@ async function republishMyListing(id){
 
 /* ---------------- DESTEK ---------------- */
 const FAQS = [
-  ['Bakiyemi nasıl yükleyebilirim?','Sağ üstteki "Bakiye Yükle" butonuna tıklayarak kredi kartı, havale/EFT veya kripto para ile bakiye yükleyebilirsin. İşlem birkaç dakika içinde hesabına yansır.'],
+  ['Bakiyemi nasıl yükleyebilirim?','Sağ üstteki "Bakiye Yükle" butonuna tıklayarak kredi kartı, havale/EFT veya kripto para ile bakiye yükleyebilirsin. İşlem birkaç dakika içinde hesabına yansır. Üstelik her ₺500 yüklemede ₺100 hediye bakiye kazanırsın (₺500 → ₺100, ₺1.000 → ₺200, ₺2.500 → ₺500, ₺5.000 → ₺1.000 hediye; en fazla ₺1.000). Hediye, yüklemen onaylanınca otomatik eklenir.'],
   ['Satın aldığım hesap/ürün bana nasıl ulaşır?','Satın alma sonrası satıcı, ilanda belirttiği teslimat yöntemine göre "Mesajlar" bölümünden ürün bilgilerini seninle paylaşır.'],
   ['Güvenilir Satıcı rozeti ne anlama gelir?','Kimlik doğrulaması yapmış, düzenli satış geçmişi ve yüksek müşteri memnuniyeti olan satıcılara verilen bir güven rozetidir.'],
   ['Bir sorun yaşarsam ne yapmalıyım?','Destek Talebi Oluştur formunu doldurarak 7/24 aktif olan destek ekibimize ulaşabilirsin. Ortalama yanıt süremiz 15 dakikadır.'],
@@ -8105,6 +8187,15 @@ function adminTabContent(tab){
       </div>
       ${!FIREBASE_ENABLED?`<p class="small" style="color:var(--warning);margin-top:10px;">Firebase yapılandırılmadığından bu işlem yalnızca Firebase bağlandığında gerçek kullanıcılara uygulanabilir.</p>`:''}
     </div>
+    <div class="wiz-card" style="margin-bottom:16px;">
+      <h2>${ic('check',16)} Başarılı İşlem Düzeltme</h2>
+      <p class="hint">Sistem otomatik saymadığı <b>gerçek</b> bir satış varsa (ör. başka platformdan taşınan veya kayıt dışı kalan), o kadar işlem ekle. Satış yapıldıkça sayaç zaten kendiliğinden artar. Düzeltme kullanıcının profilinde "yönetici düzeltmesi" olarak ayrı belirtilir ve gerekçesiyle kayda alınır. Eksi değer yazarak azaltabilirsin.</p>
+      <div class="field"><label>Kullanıcı E-postası (Gmail)</label><input id="adjSuccessEmail" type="email" placeholder="ornek@gmail.com"></div>
+      <div class="field"><label>Eklenecek İşlem Sayısı</label><input id="adjSuccessAmount" type="number" step="1" placeholder="5"></div>
+      <div class="field"><label>Gerekçe (zorunlu)</label><input id="adjSuccessNote" type="text" placeholder="Örn: Başka platformdaki 5 satış doğrulandı"></div>
+      <button class="btn btn-primary" id="adjSuccessBtn" onclick="adminAdjustSuccess()">${ic('check',14)} Uygula</button>
+      ${!FIREBASE_ENABLED?`<p class="small" style="color:var(--warning);margin-top:10px;">Firebase yapılandırılmadığından bu işlem yalnızca Firebase bağlandığında gerçek kullanıcılara uygulanabilir.</p>`:''}
+    </div>
     <div class="wiz-card">
       <h2>${ic('crown',16)} Hesap Pass Ver</h2>
       <p class="hint">Kullanıcının e-posta adresini gir, hesabına doğrudan Hesap Pass tanımla.</p>
@@ -8219,7 +8310,7 @@ function adminTabContent(tab){
     if(!reqs.length) return '<div class="empty-state"><div class="em-icon">'+ic('card',30)+'</div><b>Bekleyen ödeme talebi yok</b></div>';
     return `<div class="data-table-wrap"><table class="data-table">
       <tr><th>Talep ID</th><th>Kullanıcı</th><th>Tutar</th><th>Yöntem</th><th>Kod / Gönderen</th><th>Durum</th><th>İşlem</th></tr>
-      ${reqs.map(r=>`<tr><td class="mono">${r.id}</td><td>${esc(r.userName||r.uid||'-')}</td><td>${fmt(r.amount)}</td><td>${esc(r.method||'Google Play TL')}</td>
+      ${reqs.map(r=>`<tr><td class="mono">${r.id}</td><td>${esc(r.userName||r.uid||'-')}</td><td>${fmt(r.amount)}${topupBonus(r.amount)>0?`<div class="small" style="color:var(--green);font-weight:700;">+${fmt(topupBonus(r.amount))} bonus</div>`:''}</td><td>${esc(r.method||'Google Play TL')}</td>
         <td class="mono">${r.gplayCode?esc(r.gplayCode):'—'}</td>
         <td><span class="pill ${r.status==='Onaylandı'?'pill-success':r.status==='Reddedildi'?'pill-danger':'pill-warning'}">${r.status}</span></td>
         <td class="row-actions">${r.status==='Bekliyor'?`<button class="btn btn-primary btn-sm" onclick="adminApprovePayment('${r.id}')">Onayla</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="adminRejectPayment('${r.id}')">Reddet</button>`:'—'}</td>
@@ -8873,6 +8964,33 @@ async function adminSetProfileVerified(flag){
   if(input) input.value='';
   render();
 }
+async function adminAdjustSuccess(){
+  const email = (document.getElementById('adjSuccessEmail').value||'').trim().toLowerCase();
+  const amount = Math.trunc(Number(document.getElementById('adjSuccessAmount').value)||0);
+  const note = (document.getElementById('adjSuccessNote').value||'').trim();
+  if(!email){ toast('Lütfen bir e-posta gir','error'); return; }
+  if(!amount){ toast('Lütfen sıfırdan farklı bir sayı gir','error'); return; }
+  if(note.length<5){ toast('Lütfen bir gerekçe yaz (en az 5 karakter)','error'); return; }
+  if(!FIREBASE_ENABLED){ toast('Bu özellik gerçek kullanıcı hesapları için Firebase yapılandırması gerektirir.','error'); return; }
+  const btn = document.getElementById('adjSuccessBtn');
+  if(btn){ btn.disabled=true; btn.textContent='İşleniyor...'; }
+  const restore = ()=>{ if(btn){ btn.disabled=false; btn.textContent='Uygula'; } };
+  try{
+    const snap = await fbDb.collection('users').where('email','==',email).limit(1).get();
+    if(snap.empty){ toast('Bu e-postaya ait kullanıcı bulunamadı','error'); restore(); return; }
+    const doc = snap.docs[0];
+    const userName = doc.data().name || email;
+    await doc.ref.update({
+      successAdjust: firebase.firestore.FieldValue.increment(amount),
+      successAdjustLog: firebase.firestore.FieldValue.arrayUnion({ delta: amount, note: note, by: state.uid||'', at: Date.now() })
+    });
+    if(state.uid === doc.id){ state.successAdjust = (Number(state.successAdjust)||0) + amount; }
+    toast(`${userName}: ${amount>0?'+':''}${amount} işlem düzeltmesi uygulandı`,'success');
+  }catch(err){ toast('İşlem yapılamadı: '+authErrorMessage(err),'error'); restore(); return; }
+  restore();
+  ['adjSuccessEmail','adjSuccessAmount','adjSuccessNote'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  render();
+}
 async function adminGrantPass(){
   const email = (document.getElementById('grantPassEmail').value||'').trim().toLowerCase();
   const days = Number(document.getElementById('grantPassDays').value)||30;
@@ -8968,25 +9086,36 @@ async function adminApprovePayment(id){
         const reqSnap = await tx.get(reqRef);
         if(!reqSnap.exists || reqSnap.data().status!=='Bekliyor') throw new Error('Talep artık bekleyen durumda değil.');
         const data = reqSnap.data();
+        // Bonus, istemciden gelen alana güvenilmeden tutardan yeniden hesaplanır.
+        const bonus = topupBonus(data.amount);
         const userRef = fbDb.collection('users').doc(data.uid);
-        tx.update(userRef, { balance: firebase.firestore.FieldValue.increment(data.amount) });
-        tx.update(reqRef, { status:'Onaylandı' });
+        tx.update(userRef, { balance: firebase.firestore.FieldValue.increment(data.amount + bonus) });
+        tx.update(reqRef, { status:'Onaylandı', bonus: bonus });
         const txRef = fbDb.collection('transactions').doc();
         tx.set(txRef, { userName: data.userName||data.uid, uid:data.uid, type:(data.method==='Google Play TL'?'Google Play TL Onayı':'Havale/EFT Onayı'), amount:data.amount, date:'Bugün', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        if(bonus>0){
+          const bonusTxRef = fbDb.collection('transactions').doc();
+          tx.set(bonusTxRef, { userName: data.userName||data.uid, uid:data.uid, type:'Yükleme Bonusu 🎁', amount:bonus, date:'Bugün', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
       });
-      if(state.uid === req.uid){ state.balance += req.amount; }
+      if(state.uid === req.uid){ state.balance += req.amount + topupBonus(req.amount); }
     }catch(err){ toast('Onay işlemi başarısız: '+authErrorMessage(err),'error'); return; }
   }else{
-    if(state.uid === req.uid || req.uid==='demo-user'){ state.balance += req.amount; }
+    if(state.uid === req.uid || req.uid==='demo-user'){ state.balance += req.amount + topupBonus(req.amount); }
+    if(Array.isArray(state.balanceHistory) && topupBonus(req.amount)>0 && (state.uid === req.uid || req.uid==='demo-user')){
+      state.balanceHistory.unshift({type:'Yükleme Bonusu 🎁', date:'Bugün', amount:topupBonus(req.amount), status:'Tamamlandı'});
+    }
   }
-  req.status='Onaylandı';
+  const _approvedBonus = topupBonus(req.amount);
+  req.status='Onaylandı'; req.bonus=_approvedBonus;
   state.globalTransactions.unshift({id:'TX-'+Date.now(), userName:req.userName, type:(req.method==='Google Play TL'?'Google Play TL Onayı':'Havale/EFT Onayı'), amount:req.amount, date:'Bugün'});
+  if(_approvedBonus>0) state.globalTransactions.unshift({id:'TX-B'+Date.now(), userName:req.userName, type:'Yükleme Bonusu 🎁', amount:_approvedBonus, date:'Bugün'});
   pushNotification(req.uid, {
-    type:'balance', title:'Bakiye Yüklendi',
-    text:`${fmt(req.amount)} tutarındaki bakiye talebin onaylandı ve hesabına eklendi.`,
+    type:'balance', title:_approvedBonus>0?'Bakiye Yüklendi + Hediye 🎁':'Bakiye Yüklendi',
+    text:_approvedBonus>0 ? `${fmt(req.amount)} tutarındaki bakiye talebin onaylandı. Üstüne ${fmt(_approvedBonus)} hediye bonus eklendi!` : `${fmt(req.amount)} tutarındaki bakiye talebin onaylandı ve hesabına eklendi.`,
     link:{view:'account', params:{tab:'bakiyegecmisi'}},
   });
-  toast(`${fmt(req.amount)} tutarındaki talep onaylandı ve bakiyeye eklendi.`,'success');
+  toast(_approvedBonus>0 ? `${fmt(req.amount)} + ${fmt(_approvedBonus)} bonus bakiyeye eklendi.` : `${fmt(req.amount)} tutarındaki talep onaylandı ve bakiyeye eklendi.`,'success');
   render();
 }
 async function adminRejectPayment(id){
@@ -9113,7 +9242,7 @@ function promoBarHtml(){
     <div class="promo-bar-inner">
       <button class="promo-bar-main" onclick="promoBarClick()">
         <span class="promo-bar-gift" aria-hidden="true">🎁</span>
-        <span class="promo-bar-text">Hesabına <b>₺500</b> bakiye yükle, <b>₺250 HEDİYE</b> kazan!</span>
+        <span class="promo-bar-text"><b>₺500</b> yükle <b>₺100</b>, <b>₺1.000</b> yükle <b>₺200</b> hediye kazan! <b>₺5.000'e kadar ₺1.000 HEDİYE</b> 🎁</span>
         <span class="promo-bar-cta">Hemen Yükle</span>
       </button>
       <button class="promo-bar-close" onclick="closePromoBar()" aria-label="Kampanya şeridini kapat">✕</button>
