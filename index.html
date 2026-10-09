@@ -897,6 +897,10 @@ select.sortsel{background:var(--panel);border:1px solid var(--border);border-rad
 .deal-countdown-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--warning);background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.28);border-radius:8px;padding:6px 10px;margin-bottom:10px;}
 .deal-countdown{font-family:'JetBrains Mono',monospace;font-weight:700;}
 .deal-mini{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft);}
+.deal-inline-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.deal-inline-actions .btn{flex:1;min-width:92px;}
+.deal-order-cell{min-width:230px;}
+.deal-order-item+.deal-order-item{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-soft);}
 .deal-mini-approvals{display:flex;gap:5px;font-size:9.5px;color:var(--mid);}
 @media(max-width:420px){ .deal-sides{grid-template-columns:1fr;} .deal-actions .btn{min-width:0;} }
 
@@ -6375,7 +6379,7 @@ function watchDealTransactions(){
    diğer ekranlarda (ör. bir formu doldururken) gereksiz yeniden çizimi
    önler. */
 function renderDealSensitiveViews(){
-  if(state.view==='messages' || (state.view==='account' && (state.accountTab==='ilanlarim'||state.accountTab==='satinaldiklarim'))){
+  if(state.view==='messages' || (state.view==='account' && (state.accountTab==='ilanlarim'||state.accountTab==='satinaldiklarim'||state.accountTab==='siparisler'))){
     render();
   }
 }
@@ -6635,6 +6639,23 @@ function renderDealPanel(tx){
     </div>
     ${(!resolved && deadlineMs) ? `<div class="deal-countdown-wrap">${ic('clock',13)} Tek taraf reddetti — otomatik sonuçlanmaya kalan süre: <span class="deal-countdown" data-txid="${tx.id}" data-deadline="${deadlineMs}">${formatDealCountdown(deadlineMs-Date.now())}</span></div>` : ''}
     ${resolved ? `<span class="pill ${sMeta.cls}">${ic(sMeta.icon,11)} İşlem ${sMeta.label}</span>` : actionsHtml}
+  </div>`;
+}
+/* Hesabım içinde (Siparişlerim / Satın Aldıklarım / İlanlarım) gösterilen
+   Onayla / Reddet butonları — Mesajlar'daki panelle AYNI dealAction()
+   fonksiyonunu çağırır, yani aynı escrow mantığı ve aynı Firestore
+   transaction'ı kullanılır. ctx: bu ekranın bakış açısı ('buyer'|'seller');
+   Firebase modunda gerçek rol (dealMyRole) belirleyicidir, yerel demo modunda
+   ctx kullanılır. */
+function renderDealInlineActions(tx, ctx){
+  if(!tx || tx.status!=='pending') return '';
+  const role = dealMyRole(tx);
+  const side = role==='both' ? ctx : role;
+  if(side!=='buyer' && side!=='seller') return '';
+  const mine = side==='buyer' ? tx.buyerApproval : tx.sellerApproval;
+  return `<div class="deal-inline-actions">
+    <button class="btn btn-success btn-sm" ${mine==='approved'?'disabled':''} onclick="dealAction('${tx.id}','${side}','approve')">${ic('check',13)} Onayla</button>
+    <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:rgba(247,107,107,.35);" ${mine==='rejected'?'disabled':''} onclick="dealAction('${tx.id}','${side}','reject')">${ic('close',13)} Reddet</button>
   </div>`;
 }
 /* İlanlarım / Satın Aldıklarım panellerinde gösterilen, salt-okunur (aksiyon
@@ -7830,7 +7851,7 @@ function accountTabContent(tab){
             <span title="Satış">${ic('bag',12)} ${(l.seller&&l.seller.sales)||0}</span>
             <span title="Eklenme tarihi">${ic('clock',12)} ${timeAgo(l.createdAt)}</span>
           </div>
-          ${renderDealMiniStatus(dealForListing(l.id))}
+          ${(function(){ const _d=dealForListing(l.id); return renderDealMiniStatus(_d)+renderDealInlineActions(_d,'seller'); })()}
         </div>
         <div class="mylist-card-actions">
           ${locked
@@ -7883,7 +7904,7 @@ function accountTabContent(tab){
           <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;margin-top:8px;">
             <div class="small text-mid" style="margin-bottom:2px;">${esc(d.listingTitle||'')}</div>
             ${renderDealMiniStatus(d)}
-            ${d.status==='pending'?`<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="go('messages',{})">${ic('mail',12)} Mesajlardan Onayla/Reddet</button>`:''}
+            ${renderDealInlineActions(d,'buyer')}
           </div>`).join('')}
       </div>`;
     }).join('') : `<div class="empty-state"><div class="em-icon">${ic('bag',30)}</div><b>Henüz satın alma yapmadın</b></div>`;
@@ -7903,8 +7924,8 @@ function accountTabContent(tab){
   }
   if(tab==='siparisler'){
     return `<div class="data-table-wrap"><table class="data-table">
-      <tr><th>Sipariş No</th><th>Ürün</th><th>Tarih</th><th>Tutar</th><th>Durum</th><th></th></tr>
-      ${state.orders.map(o=>`<tr><td class="mono">${o.id}</td><td>${esc(o.item)}</td><td>${o.date}</td><td>${fmt(o.price)}</td><td><span class="pill ${o.status.includes('Teslim')?'pill-success':'pill-warning'}">${o.status}</span></td><td>${(o.deliveries&&o.deliveries.length)?`<button class="btn btn-outline btn-sm" onclick="openDeliveryModal('${o.id}')">${ic('lock',12)} Teslimatı Gör</button>`:''}</td></tr>`).join('')}
+      <tr><th>Sipariş No</th><th>Ürün</th><th>Tarih</th><th>Tutar</th><th>Durum</th><th>Onay / Red</th><th></th></tr>
+      ${state.orders.map(o=>`<tr><td class="mono">${o.id}</td><td>${esc(o.item)}</td><td>${o.date}</td><td>${fmt(o.price)}</td><td><span class="pill ${o.status.includes('Teslim')?'pill-success':'pill-warning'}">${o.status}</span></td><td class="deal-order-cell">${dealsForOrder(o.id).map(d=>`<div class="deal-order-item"><div class="small text-mid">${esc(d.listingTitle||'')}</div>${renderDealMiniStatus(d)}${renderDealInlineActions(d,'buyer')}</div>`).join('') || '<span class="small text-mid">—</span>'}</td><td>${(o.deliveries&&o.deliveries.length)?`<button class="btn btn-outline btn-sm" onclick="openDeliveryModal('${o.id}')">${ic('lock',12)} Teslimatı Gör</button>`:''}</td></tr>`).join('')}
     </table></div>`;
   }
   if(tab==='bakiyegecmisi'){
