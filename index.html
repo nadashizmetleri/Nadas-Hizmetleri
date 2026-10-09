@@ -897,6 +897,9 @@ select.sortsel{background:var(--panel);border:1px solid var(--border);border-rad
 .deal-countdown-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--warning);background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.28);border-radius:8px;padding:6px 10px;margin-bottom:10px;}
 .deal-countdown{font-family:'JetBrains Mono',monospace;font-weight:700;}
 .deal-mini{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft);}
+.deal-panels-stack{flex-shrink:0;max-height:42vh;overflow-y:auto;border-bottom:1px solid var(--border-soft);}
+.deal-panels-stack .deal-panel{border-bottom:1px solid var(--border-soft);}
+.deal-panels-stack .deal-panel:last-child{border-bottom:none;}
 .deal-inline-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
 .deal-inline-actions .btn{flex:1;min-width:92px;}
 .deal-order-cell{min-width:230px;}
@@ -6406,6 +6409,34 @@ function findDealForConversation(isFb, conv){
   pool.sort((a,b)=>(b.updatedAtMs||b.createdAtMs||0)-(a.updatedAtMs||a.createdAtMs||0));
   return pool[0];
 }
+/* Bir sohbet (alıcı-satıcı çifti başına TEK sohbet var) için gösterilecek TÜM
+   işlemleri döndürür: aynı satıcıdan birden fazla ürün alındıysa henüz
+   sonuçlanmamış (pending) HER işlem ayrı bir panel olarak listelenir (en yeni
+   üstte). Bekleyen yoksa en son sonuçlanan işlem tek panel olarak kalır.
+   (Eski davranış sohbetin ilk ilanına ait işlemi sabit gösteriyordu, bu yüzden
+   sonradan alınan ürünler onay/red paneline hiç gelmiyordu.) */
+function findDealsForConversation(isFb, conv){
+  const list = state.dealTransactions||[];
+  let candidates;
+  if(isFb){
+    const otherUid = conv.otherUid;
+    if(!state.uid || !otherUid) return [];
+    candidates = list.filter(t=> (t.buyerUid===state.uid && t.sellerUid===otherUid) || (t.sellerUid===state.uid && t.buyerUid===otherUid));
+  }else{
+    candidates = list.filter(t=>t.sellerName===conv.withName);
+  }
+  if(!candidates.length) return [];
+  const byNewest = (a,b)=>(b.createdAtMs||b.updatedAtMs||0)-(a.createdAtMs||a.updatedAtMs||0);
+  const pending = candidates.filter(t=>t.status==='pending').sort(byNewest);
+  if(pending.length) return pending;
+  return [candidates.slice().sort((a,b)=>(b.updatedAtMs||b.createdAtMs||0)-(a.updatedAtMs||a.createdAtMs||0))[0]];
+}
+function renderDealPanels(isFb, conv){
+  const deals = findDealsForConversation(isFb, conv);
+  if(!deals.length) return '';
+  if(deals.length===1) return renderDealPanel(deals[0]);
+  return `<div class="deal-panels-stack">${deals.map(renderDealPanel).join('')}</div>`;
+}
 /* Bu işlemde giriş yapan kullanıcının rolünü döndürür ('buyer'/'seller'/null).
    Yerel demo modunda tek kullanıcı olduğundan (gerçek karşı taraf yok) her
    iki rol de test amaçlı aynı kişi tarafından yönetilebilir. */
@@ -6811,7 +6842,7 @@ function viewMessages(){
           </div>
           ${(!isFb || isSupportConv) ? '' : `<span class="pill ${isOtherUserOnline()?'pill-success':'pill-muted'} msgs-online" id="msgsOnlineStatus">${isOtherUserOnline()?'● Çevrimiçi':'Çevrimdışı'}</span>`}
         </div>
-        ${isSupportConv ? '' : renderDealPanel(findDealForConversation(isFb, conv))}
+        ${isSupportConv ? '' : renderDealPanels(isFb, conv)}
         <div class="msgs-thread" id="msgThread">
           ${(messages||[]).length ? (messages||[]).map(m=>{
             const mine = isSupportConv ? !m.fromAdmin : (isFb ? m.mine : m.from==='me');
