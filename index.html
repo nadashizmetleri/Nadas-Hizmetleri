@@ -2443,17 +2443,32 @@ async function uploadToFirebaseStorage(blob){
   if(!(typeof firebase!=='undefined' && firebase.storage && FIREBASE_ENABLED && fbApp)) throw new Error('Firebase Storage kullanılamıyor');
   const uid = (state && state.uid) || 'anon';
   const path = 'uploads/'+uid+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,8)+'.jpg';
-  const ref = firebase.storage().ref(path);
-  await ref.put(blob, { contentType:'image/jpeg' });
+  const st = firebase.storage();
+  try{ st.setMaxUploadRetryTime(8000); st.setMaxOperationRetryTime(8000); }catch(e){}
+  const ref = st.ref(path);
+  const task = ref.put(blob, { contentType:'image/jpeg' });
+  await new Promise(function(resolve, reject){
+    const timer = setTimeout(function(){ try{ task.cancel(); }catch(e){} reject(new Error('zaman aşımı (Storage kapalı veya kurallar izin vermiyor olabilir)')); }, 15000);
+    task.on('state_changed', null,
+      function(err){ clearTimeout(timer); reject(err); },
+      function(){ clearTimeout(timer); resolve(); });
+  });
   return await ref.getDownloadURL();
 }
 async function uploadToImgbbOnce(blob){
   const formData = new FormData();
   formData.append('image', blob, 'image.jpg');
-  const res = await fetch('https://api.imgbb.com/1/upload?key='+IMGBB_API_KEY, { method:'POST', body:formData });
-  const data = await res.json().catch(()=>null);
-  if(!res.ok || !data || !data.success) throw new Error((data && data.error && data.error.message) || ('imgbb HTTP '+res.status));
-  return data.data.url;
+  const ctrl = new AbortController();
+  const timer = setTimeout(function(){ ctrl.abort(); }, 20000);
+  try{
+    const res = await fetch('https://api.imgbb.com/1/upload?key='+IMGBB_API_KEY, { method:'POST', body:formData, signal:ctrl.signal });
+    const data = await res.json().catch(()=>null);
+    if(!res.ok || !data || !data.success) throw new Error((data && data.error && data.error.message) || ('imgbb HTTP '+res.status));
+    return data.data.url;
+  }catch(e){
+    if(e && e.name==='AbortError') throw new Error('imgbb zaman aşımı');
+    throw e;
+  }finally{ clearTimeout(timer); }
 }
 async function uploadToImgbb(file){
   const blob = await compressImage(file);
