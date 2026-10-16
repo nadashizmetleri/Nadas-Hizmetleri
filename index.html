@@ -1302,6 +1302,55 @@ html,body{touch-action:pan-x pan-y;}
 .offline-lock .ol-dot:nth-child(2){animation-delay:.15s;}
 .offline-lock .ol-dot:nth-child(3){animation-delay:.3s;}
 @keyframes olpulse{0%,100%{opacity:.25;transform:scale(.8);}50%{opacity:1;transform:scale(1);}}
+
+/* ================= DESTEK TALEBİ SİSTEMİ ================= */
+.tk-hero{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:20px 0 4px;}
+.tk-hero-badges{display:flex;gap:8px;flex-wrap:wrap;}
+.tk-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--mid);background:var(--panel);border:1px solid var(--border);padding:6px 11px;border-radius:999px;}
+.tk-badge svg{color:var(--orange);}
+.tk-cta{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:18px;padding:16px 18px;border-radius:14px;border:1px solid var(--border);background:linear-gradient(135deg,rgba(59,140,255,.08),rgba(255,122,41,.06));}
+.tk-cta b{font-family:'Space Grotesk';font-size:14px;}
+.tk-cta p{font-size:12px;color:var(--mid);margin-top:3px;}
+.tk-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:12px;}
+.tk-chips::-webkit-scrollbar{display:none;}
+.tk-chip{padding:7px 13px;border-radius:999px;font-size:12px;font-weight:700;background:var(--panel);border:1px solid var(--border);color:var(--mid);white-space:nowrap;transition:.15s;display:inline-flex;align-items:center;gap:6px;flex-shrink:0;}
+.tk-chip:hover{color:var(--hi);}
+.tk-chip.active{background:var(--orange-soft);border-color:rgba(255,122,41,.4);color:var(--orange);}
+.tk-chip .n{font-size:10.5px;opacity:.75;}
+.tk-card{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:14px;border:1px solid var(--border);background:var(--panel-2);border-radius:14px;margin-bottom:10px;transition:.15s;color:inherit;}
+.tk-card:hover{border-color:var(--blue);background:var(--elevated);}
+.tk-card.unread{border-color:rgba(255,122,41,.45);box-shadow:inset 3px 0 0 var(--orange);}
+.tk-card-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--blue-soft);color:var(--blue);}
+.tk-card-body{flex:1;min-width:0;}
+.tk-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.tk-card-title{font-size:13px;font-weight:700;color:var(--hi);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.tk-card-prev{font-size:11.8px;color:var(--mid);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tk-card-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:7px;font-size:10.5px;color:var(--low);}
+.tk-no{font-family:'JetBrains Mono',monospace;font-weight:600;}
+.tk-back{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--mid);margin-bottom:12px;}
+.tk-back:hover{color:var(--hi);}
+.tk-detail-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.tk-detail-title{font-size:17px;line-height:1.3;margin-top:2px;word-break:break-word;}
+.tk-detail-meta,.tk-adm-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--mid);margin-top:10px;}
+.tk-detail-meta span,.tk-adm-meta span{display:inline-flex;align-items:center;gap:5px;}
+.tk-adm-meta{margin:0;padding:10px 15px;border-bottom:1px solid var(--border-soft);flex-shrink:0;background:var(--panel-2);}
+.tk-note{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--elevated);border:1px solid var(--border-soft);font-size:12px;color:var(--mid);line-height:1.5;}
+.tk-link{color:var(--blue);font-weight:700;font-size:12px;text-decoration:underline;margin-left:4px;}
+.tk-thread{display:flex;flex-direction:column;gap:10px;max-height:min(52vh,520px);min-height:200px;overflow-y:auto;padding:14px 6px 14px 2px;margin-top:6px;overscroll-behavior:contain;}
+.tk-thread .msg-bubble{max-width:84%;word-break:break-word;}
+.tk-compose{display:flex;gap:8px;align-items:flex-end;margin-top:8px;padding-top:12px;border-top:1px solid var(--border-soft);}
+.tk-compose textarea{flex:1;min-width:0;min-height:46px;max-height:140px;resize:vertical;background:var(--elevated);border:1px solid var(--border);border-radius:12px;padding:11px 13px;color:var(--hi);font-size:16px;line-height:1.4;font-family:inherit;}
+.tk-compose textarea:focus{border-color:var(--orange);outline:none;}
+.tk-compose .btn{flex-shrink:0;width:46px;height:46px;padding:0;border-radius:12px;display:flex;align-items:center;justify-content:center;}
+.tk-compose.adm{margin:0;padding:12px 14px;background:var(--panel-2);}
+.tk-quick{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:8px 14px 0;flex-shrink:0;background:var(--panel-2);border-top:1px solid var(--border-soft);}
+.tk-quick::-webkit-scrollbar{display:none;}
+.tk-adm-actions{display:flex;gap:6px;flex-shrink:0;}
+#adminTicketThread .msg-bubble{word-break:break-word;}
+@media(max-width:859px){
+  .msgs-shell.chat-open .tk-adm-meta{padding-left:15px;}
+  .tk-detail-top{flex-direction:column;gap:8px;}
+}
 </style>
 </head>
 <body>
@@ -1639,9 +1688,38 @@ html,body{touch-action:pan-x pan-y;}
        }
 
        match /supportTickets/{ticketId} {
+         // Kullanıcı SADECE kendi taleplerini okur; admin hepsini okur/yönetir.
          allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-         allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-         allow update: if isAdmin();
+         allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid
+           && request.resource.data.status == 'Açık'
+           && request.resource.data.subject is string
+           && request.resource.data.subject.size() > 0 && request.resource.data.subject.size() <= 150;
+         // Kullanıcı sadece durum/önizleme/okundu alanlarını güncelleyebilir
+         // (yanıt yazınca talep 'Açık' olur, "çözüldü" ile kapatabilir).
+         allow update: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid
+           && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status','lastMessage','lastMessageBy','updatedAt','unreadForAdmin','unreadForUser'])
+           && request.resource.data.status in ['Açık','Çözüldü']);
+         allow delete: if isAdmin();
+
+         // MESAJLAR: "admin" mesajını sadece gerçek admin yazabilir ve gönderen adı
+         // sabit "Destek Ekibi" olmalıdır. "user" mesajını sadece talebin sahibi yazar.
+         // Mesajlar düzenlenemez; sadece admin silebilir.
+         match /messages/{messageId} {
+           allow read: if isAdmin() || (isSignedIn()
+             && get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.uid == request.auth.uid);
+           allow create: if isSignedIn()
+             && request.resource.data.text is string
+             && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 3000
+             && request.resource.data.createdAt == request.time
+             && (
+               (isAdmin() && request.resource.data.from == 'admin' && request.resource.data.senderName == 'Destek Ekibi')
+               || (request.resource.data.from == 'user'
+                   && get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.uid == request.auth.uid)
+             );
+           allow update: if false;
+           allow delete: if isAdmin();
+         }
        }
 
        // DUYURULAR: 'title','text','tag','audience' alanlarına ek olarak
@@ -2587,6 +2665,8 @@ const state = {
   wizard:{step:1,data:{}},
   ticketMessages:[],
   activeTicket:null,
+  myTickets:[], supportTab:'faq', ticketFilter:'all', ticketMessages:[], pendingTicketOpen:null,
+  adminActiveTicket:null, adminTicketMessages:[], adminTicketFilter:'all', adminTicketSearch:'', adminTicketMobileOpen:false,
   tickets: FIREBASE_ENABLED ? [] : MOCK_TICKETS.slice(),
   adminInboxNotifications: [], // admin paneli "Gelen Talep Bildirimleri" — bkz. pushAdminNotification
   announcements: [],
@@ -2633,6 +2713,9 @@ function resetPersonalState(){
   detachGlobalChatListener();
   state.gchat = { open:false, messages:[], unread:0, readCount:0 };
   state.tickets = [];
+  state.myTickets = []; state.activeTicket = null; state.supportTab = 'faq'; state.ticketMessages = []; state.pendingTicketOpen = null;
+  state.adminActiveTicket = null; state.adminTicketMessages = []; state.adminTicketMobileOpen = false;
+  detachMyTickets(); detachTicketMessages();
   state.adminInboxNotifications = [];
   detachAdminInboxListener();
   state.liveSupportChatExists = false;
@@ -2727,7 +2810,7 @@ function loadLocalAppState(){
     if(Array.isArray(d.cart)) state.cart = d.cart;
     if(typeof d.hasPass==='boolean') state.hasPass = d.hasPass;
     if(d.passExpiry!==undefined) state.passExpiry = d.passExpiry;
-    if(Array.isArray(d.tickets)) state.tickets = d.tickets;
+    if(!FIREBASE_ENABLED && Array.isArray(d.tickets)) state.tickets = d.tickets;
     if(Array.isArray(d.adminInboxNotifications)) state.adminInboxNotifications = d.adminInboxNotifications;
     if(Array.isArray(d.paymentRequests)) state.paymentRequests = d.paymentRequests;
     if(Array.isArray(d.withdrawalRequests)) state.withdrawalRequests = d.withdrawalRequests;
@@ -3001,6 +3084,7 @@ function watchAuthState(){
       watchDealTransactions();
       listenGlobalChat();
       listenLiveSupportChat();
+      listenMyTickets();
       startPresenceHeartbeat();
       if(state.isAdmin){ loadPaymentRequestsFromFirestore(); loadGlobalTransactionsFromFirestore(); loadSupportTicketsFromFirestore(); loadAnnouncementsForAdmin(); watchAdminInboxNotifications(); watchAdminSupportChats(); }
       render();
@@ -3015,6 +3099,8 @@ function watchAuthState(){
       detachPaymentRequestsListener();
       detachGlobalTransactionsListener();
       detachSupportTicketsListener();
+      detachMyTickets();
+      detachTicketMessages();
       detachAdminInboxListener();
       detachLiveSupportChat();
       detachAdminSupportChats();
@@ -3291,10 +3377,14 @@ function detachSupportTicketsListener(){ if(_supportTicketsUnsub){ _supportTicke
 function loadSupportTicketsFromFirestore(){
   if(!FIREBASE_ENABLED || !fbDb) return;
   detachSupportTicketsListener();
-  _supportTicketsUnsub = fbDb.collection('supportTickets').orderBy('createdAt','desc').limit(100)
+  _supportTicketsUnsub = fbDb.collection('supportTickets').orderBy('createdAt','desc').limit(300)
     .onSnapshot(function(snap){
-      state.tickets = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-      if(state.view==='admin') render();
+      state.tickets = snap.docs.map(d=>tkNormalize(d.data(), d.id));
+      if(state.view==='admin' && state.adminTab==='destekler'){
+        if(state.adminActiveTicket) markTicketRead(state.adminActiveTicket,'admin');
+        refreshAdminTicketsUI();
+      }else if(state.view==='admin') render();
+      else renderHeaderOnly();
     }, function(err){ console.error('Destek talepleri dinlenemedi:', err); });
 }
 
@@ -3346,6 +3436,7 @@ const NOTIF_TYPES = {
   system:{icon:'bell', color:'var(--mid)', label:'Sistem'},
   admin:{icon:'sparkle', color:'var(--orange)', label:'Admin Duyurusu'},
   support_chat:{icon:'chat', color:'var(--blue)', label:'Canlı Destek'},
+  support_ticket:{icon:'ticket', color:'var(--orange)', label:'Destek Talebi'},
 };
 function notifMeta(type){ return NOTIF_TYPES[type] || NOTIF_TYPES.system; }
 /* Yeni bir bildirim geldiğinde kullanıcıyı ANINDA bilgilendirir: uygulama
@@ -3577,6 +3668,7 @@ function openAdminInboxItem(id){
     if(n.fromUid) adminOpenSupportChat(n.fromUid);
   }else{
     state.adminTab = n.type==='withdrawal' ? 'paracekme' : 'destekler';
+    if(n.type==='support' && n.refId) adminOpenTicket(String(n.refId));
   }
   render();
 }
@@ -8101,122 +8193,489 @@ async function republishMyListing(id){
 }
 
 /* ---------------- DESTEK ---------------- */
+/* ================= DESTEK MERKEZİ — TALEP SİSTEMİ =================
+   Firestore şeması:
+   supportTickets/{id}: {uid,userName,userEmail,subject,category,orderRef,description,
+     priority,status:'Açık'|'Yanıtlandı'|'Çözüldü',lastMessage,lastMessageBy:'user'|'admin',
+     unreadForAdmin,unreadForUser,createdAt,updatedAt}
+   supportTickets/{id}/messages/{mid}: {from:'user'|'admin',senderName,text,createdAt}
+   Kullanıcı SADECE kendi taleplerini görür ve yanıtlar; admin hepsini görür ve
+   "Destek Ekibi" adıyla yanıtlar. İki taraf da canlı (onSnapshot) güncellenir. */
 const FAQS = [
-  ['Bakiyemi nasıl yükleyebilirim?','Sağ üstteki "Bakiye Yükle" butonuna tıklayarak kredi kartı, havale/EFT veya kripto para ile bakiye yükleyebilirsin. İşlem birkaç dakika içinde hesabına yansır. Üstelik her ₺500 yüklemede ₺50 hediye bakiye kazanırsın (₺500 → ₺50, ₺1.000 → ₺100, ₺5.000 → ₺500, ₺10.000 → ₺1.000 hediye; en fazla ₺1.000). Hediye, yüklemen onaylanınca otomatik eklenir.'],
+  ['Bakiyemi nasıl yükleyebilirim?','Sağ üstteki "Bakiye Yükle" butonuna tıklayarak kredi kartı, havale/EFT veya kripto para ile bakiye yükleyebilirsin. İşlem birkaç dakika içinde hesabına yansır.'],
   ['Satın aldığım hesap/ürün bana nasıl ulaşır?','Satın alma sonrası satıcı, ilanda belirttiği teslimat yöntemine göre "Mesajlar" bölümünden ürün bilgilerini seninle paylaşır.'],
   ['Güvenilir Satıcı rozeti ne anlama gelir?','Kimlik doğrulaması yapmış, düzenli satış geçmişi ve yüksek müşteri memnuniyeti olan satıcılara verilen bir güven rozetidir.'],
-  ['Bir sorun yaşarsam ne yapmalıyım?','Destek Talebi Oluştur formunu doldurarak 7/24 aktif olan destek ekibimize ulaşabilirsin. Ortalama yanıt süremiz 15 dakikadır.'],
+  ['Bir sorun yaşarsam ne yapmalıyım?','"Yeni Destek Talebi" formunu doldurarak destek ekibimize ulaşabilirsin. Yanıtlar "Taleplerim" bölümünde görünür ve bildirim olarak gelir.'],
   ['İlan verirken ücret alınıyor mu?','İlan vermek tamamen ücretsizdir. Sadece başarılı satışlarda düşük oranlı bir hizmet bedeli uygulanır.'],
 ];
+const TICKET_CATEGORIES = ['Ödeme / Bakiye','Sipariş / Teslimat','Hesap Sorunu','Satıcı / İlan','Şikayet','Diğer'];
+const TICKET_STATUS = {
+  'Açık':{cls:'pill-warning', hint:'Talebin destek ekibine iletildi, yanıt bekleniyor.'},
+  'Yanıtlandı':{cls:'pill-blue', hint:'Destek ekibi yanıtladı. İstersen aşağıdan devam edebilirsin.'},
+  'Çözüldü':{cls:'pill-success', hint:'Bu talep çözüldü olarak kapatıldı. Yeni mesaj yazarsan yeniden açılır.'},
+};
+const TICKET_QUICK_REPLIES = [
+  ['Talep alındı','Merhaba, talebin bize ulaştı ve inceleniyor. En kısa sürede dönüş yapacağız.'],
+  ['Ek bilgi iste','Merhaba, talebini hızlı çözebilmemiz için sipariş numaranı ve varsa ekran görüntüsünü paylaşabilir misin?'],
+  ['Ödeme kontrolü','Ödemeni kontrol ediyoruz. Onaylandığında bakiyene otomatik yansıyacak ve bildirim alacaksın.'],
+  ['Çözüldü','Sorunun çözüldüğünü düşünüyoruz. Başka bir konuda yardımcı olabilirsek buradayız, iyi günler!'],
+];
+
+/* ---- yardımcılar ---- */
+function tkMillis(v){ if(!v) return 0; if(typeof v==='number') return v; if(v.toMillis) return v.toMillis(); if(v.seconds) return v.seconds*1000; return 0; }
+function tkNo(t){ return t.no || ('DST-'+String(t.id).replace(/[^A-Za-z0-9]/g,'').slice(0,6).toUpperCase()); }
+function tkFmt(ms){ return ms ? new Date(ms).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }
+function tkAgo(ms){ return ms ? timeAgo(ms) : ''; }
+function tkStatusPill(s){ const m=TICKET_STATUS[s]||TICKET_STATUS['Açık']; return `<span class="pill ${m.cls}">${esc(s)}</span>`; }
+function tkNormalize(d, id){
+  const created = tkMillis(d.createdAt) || Date.now();
+  const updated = tkMillis(d.updatedAt) || created;
+  const status = d.status || 'Açık';
+  const legacy = Array.isArray(d.thread) ? d.thread.map(m=>({from:m.from==='support'?'admin':'user', senderName:d.userName||'', text:m.text||'', at:0, time:m.time||''})) : [];
+  return Object.assign({}, d, {
+    id:id, createdMs:created, updatedMs:updated, status:status, category:d.category||'Diğer',
+    lastMessage: d.lastMessage || (legacy.length ? legacy[legacy.length-1].text : ''),
+    legacy:legacy,
+    unreadForAdmin: d.unreadForAdmin!==undefined ? !!d.unreadForAdmin : (status==='Açık' && !d.lastMessageBy),
+    unreadForUser: !!d.unreadForUser,
+  });
+}
+function userTickets(){ return (FIREBASE_ENABLED ? state.myTickets : state.tickets) || []; }
+function tkThread(t, role){
+  let msgs = !FIREBASE_ENABLED ? (t.messages||[]) : (role==='admin' ? state.adminTicketMessages : state.ticketMessages) || [];
+  if(!msgs.length && t.description) msgs = [{from:'user', senderName:t.userName, text:t.description, at:t.createdMs}];
+  return (t.legacy||[]).concat(msgs);
+}
+function tkBubble(m, role){
+  const mine = role==='admin' ? m.from==='admin' : m.from==='user';
+  const who = m.from==='admin' ? 'Destek Ekibi' : (m.senderName||'Kullanıcı');
+  const when = m.at ? tkFmt(m.at) : (m.time||'');
+  return `<div class="msg-bubble ${mine?'me':'them'}">${esc(m.text).replace(/\n/g,'<br>')}<div class="msg-time">${mine?'':esc(who)+' · '}${when}</div></div>`;
+}
+function tkThreadHtml(t, role){
+  const list = tkThread(t, role);
+  return list.length ? list.map(m=>tkBubble(m, role)).join('') : '<div class="msgs-empty-thread">Mesajlar yükleniyor…</div>';
+}
+
+/* ---- Firestore dinleyicileri ---- */
+let _myTicketsUnsub = null;
+const _tkMsgUnsub = {user:null, admin:null};
+function detachMyTickets(){ if(_myTicketsUnsub){ _myTicketsUnsub(); _myTicketsUnsub=null; } }
+function detachTicketMessages(role){
+  if(!role){ detachTicketMessages('user'); detachTicketMessages('admin'); return; }
+  if(_tkMsgUnsub[role]){ _tkMsgUnsub[role](); _tkMsgUnsub[role]=null; }
+}
+function listenMyTickets(){
+  if(!FIREBASE_ENABLED || !fbDb || !state.uid) return;
+  detachMyTickets();
+  _myTicketsUnsub = fbDb.collection('supportTickets').where('uid','==',state.uid).onSnapshot(function(snap){
+    state.myTickets = snap.docs.map(d=>tkNormalize(d.data(), d.id)).sort((a,b)=>b.updatedMs-a.updatedMs);
+    const pid = state.pendingTicketOpen;
+    if(pid && state.myTickets.some(t=>t.id===pid)){ state.pendingTicketOpen=null; openTicket(pid); return; }
+    if(state.view==='support' && state.supportTab==='detail' && state.activeTicket) markTicketRead(state.activeTicket,'user');
+    refreshSupportUI();
+  }, function(err){ console.error('Destek taleplerin dinlenemedi:', err); });
+}
+function attachTicketMessages(id, role){
+  detachTicketMessages(role);
+  const key = role==='admin' ? 'adminTicketMessages' : 'ticketMessages';
+  state[key] = [];
+  if(!FIREBASE_ENABLED || !fbDb) return;
+  _tkMsgUnsub[role] = fbDb.collection('supportTickets').doc(id).collection('messages').orderBy('createdAt','asc').onSnapshot(function(snap){
+    state[key] = snap.docs.map(function(d){
+      const m = d.data()||{};
+      return {id:d.id, from:m.from==='admin'?'admin':'user', senderName:m.senderName||'', text:m.text||'', at:tkMillis(m.createdAt)||Date.now()};
+    });
+    markTicketRead(id, role);
+    if(role==='admin') refreshAdminTicketsUI(true); else refreshSupportUI(true);
+  }, function(err){ console.error('Talep mesajları dinlenemedi:', err); });
+}
+function markTicketRead(id, role){
+  if(!FIREBASE_ENABLED || !fbDb) return;
+  const list = role==='admin' ? state.tickets : state.myTickets;
+  const t = (list||[]).find(x=>x.id===id);
+  const field = role==='admin' ? 'unreadForAdmin' : 'unreadForUser';
+  if(!t || !t[field]) return;
+  t[field] = false;
+  const upd = {}; upd[field] = false;
+  fbDb.collection('supportTickets').doc(id).update(upd).catch(function(){});
+}
+
+/* ================= KULLANICI TARAFI ================= */
 function viewSupport(){
+  const pid = state.params && state.params.ticket;
+  if(pid){ state.params = Object.assign({}, state.params, {ticket:null}); setTimeout(function(){ openTicketFromLink(pid); },0); }
   return `
   <div class="wrap">
-    <div class="disp section-title" style="margin:20px 0 4px;">Destek Merkezi</div>
-    <p class="section-sub" style="margin-bottom:20px;">Sorularının çoğu aşağıda yanıtlanmış olabilir, yoksa bize doğrudan yazabilirsin.</p>
-    <div class="panel-layout">
-      <aside class="panel-nav">
-        <button class="panel-nav-item active">${ic('help',15)} Sık Sorulan Sorular</button>
-        <button class="panel-nav-item" onclick="document.getElementById('ticketForm').scrollIntoView({behavior:'smooth'})">${ic('ticket',15)} Destek Talebi Oluştur</button>
-        <button class="panel-nav-item" onclick="document.getElementById('myTickets').scrollIntoView({behavior:'smooth'})">${ic('chat',15)} Taleplerim</button>
-      </aside>
-      <div class="panel-content">
-        <div>
-          ${FAQS.map((f,i)=>`
-            <div class="faq-item" id="faq${i}">
-              <div class="faq-q" onclick="toggleFaq(${i})"><span>${esc(f[0])}</span><span class="faq-chevron">⌄</span></div>
-              <div class="faq-a">${esc(f[1])}</div>
-            </div>
-          `).join('')}
-        </div>
-        <div class="divider"></div>
-        <div id="ticketForm">
-          <h2 class="disp" style="font-size:16px;margin-bottom:10px;">Destek Talebi Oluştur</h2>
-          <form onsubmit="event.preventDefault(); createTicket(this.subject.value, this.desc.value); this.reset();">
-            <div class="field"><label>Konu</label><input name="subject" placeholder="Örn: Ödemem bakiyeme yansımadı" required></div>
-            <div class="field"><label>Kategori</label>
-              <select><option>Ödeme / Bakiye</option><option>Sipariş / Teslimat</option><option>Hesap Sorunu</option><option>Şikayet</option><option>Diğer</option></select>
-            </div>
-            <div class="field"><label>Açıklama</label><textarea name="desc" placeholder="Sorununu detaylıca anlat..." required></textarea></div>
-            <button class="btn btn-primary" type="submit">Talep Gönder</button>
-          </form>
-        </div>
-        <div class="divider"></div>
-        <div id="myTickets">
-          <h2 class="disp" style="font-size:16px;margin-bottom:10px;">Taleplerim</h2>
-          ${state.tickets.map(t=>`
-            <div class="list-row" style="cursor:pointer;" onclick="openTicket('${t.id}')">
-              <div class="list-row-media" style="background:${grad(3)}">${ic('ticket',20)}</div>
-              <div style="flex:1;"><b style="font-size:12.5px;">${esc(t.subject)}</b><div class="small text-mid">${t.id} · ${t.date}</div></div>
-              ${t.priority?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı Destek</span>`:''}
-              <span class="pill ${t.status==='Açık'?'pill-warning':'pill-success'}">${t.status}</span>
-            </div>
-          `).join('')}
-        </div>
+    <div class="tk-hero">
+      <div>
+        <div class="disp section-title" style="margin:0 0 4px;">Destek Merkezi</div>
+        <p class="section-sub" style="margin:0;">Sorularının çoğu aşağıda yanıtlanmış olabilir. Yoksa talep aç, yanıtı buradan takip et.</p>
+      </div>
+      <div class="tk-hero-badges">
+        <span class="tk-badge">${ic('clock',13)} Ortalama yanıt 15 dk</span>
+        <span class="tk-badge">${ic('shield',13)} 7/24 destek</span>
       </div>
     </div>
-  </div>
-  ${renderTicketModal()}`;
-}
-function toggleFaq(i){ document.getElementById('faq'+i).classList.toggle('open'); }
-function createTicket(subject, desc){
-  if(!subject) return;
-  submitTicketRequest(subject, desc);
-}
-/* Destek talebini oluşturur; Firebase etkinken `supportTickets` koleksiyonuna
-   kalıcı olarak yazar (admin panelindeki canlı dinleyici bunu yakalar) ve
-   ardından pushAdminNotification() ile admin gelen kutusuna ANINDA bir
-   bildirim düşer — gönderen kullanıcı, talep konusu ve mesajı içerir. */
-async function submitTicketRequest(subject, desc){
-  const priority = isPassActive();
-  const ticketData = {
-    uid: state.uid||'demo-user', userName: state.userName||'Kullanıcı',
-    subject, status:'Açık', priority, thread:[{from:'me',text:desc,time:'Şimdi'}], date:'Bugün',
-  };
-  let id;
-  if(FIREBASE_ENABLED && state.uid){
-    try{
-      ticketData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      const ref = await fbDb.collection('supportTickets').add(ticketData);
-      id = ref.id;
-    }catch(err){ toast('Talep gönderilemedi: '+authErrorMessage(err), 'error'); return; }
-  }else{
-    id = 'DEST-'+(120+state.tickets.length);
-  }
-  state.tickets.unshift(Object.assign({id}, ticketData));
-  pushAdminNotification({ type:'support', message: subject+(desc?' — '+desc:''), refId: id });
-  toast(priority?`Hızlı Destek talebin oluşturuldu: ${id}`:'Destek talebin oluşturuldu: '+id,'success');
-  render();
-}
-function openTicket(id){ state.activeTicket = id; render(); openTicketModal(); }
-function openTicketModal(){
-  const t = state.tickets.find(x=>x.id===state.activeTicket);
-  if(!t) return;
-  document.getElementById('modalRoot').innerHTML = `
-  <div class="overlay" onclick="if(event.target===this) closeModal()">
-    <div class="modal" style="max-width:460px;">
-      <div class="modal-head"><h3>${t.id} — ${esc(t.subject)}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
-      <span class="pill ${t.status==='Açık'?'pill-warning':'pill-success'}">${t.status}</span>
-      <div class="msg-thread mt-10">
-        ${t.thread.map(m=>`<div class="msg-bubble ${m.from==='me'?'me':'them'}">${esc(m.text)}<div class="msg-time">${m.from==='support'?'Destek Ekibi · ':''}${m.time}</div></div>`).join('')}
-      </div>
-      <form class="msg-compose" onsubmit="event.preventDefault(); replyTicket(this.msg.value); this.reset();">
-        <input name="msg" placeholder="Mesajını yaz..." required>
-        <button class="btn btn-primary" type="submit">Gönder</button>
-      </form>
+    <div class="panel-layout">
+      <aside class="panel-nav" id="supportNav">${supportNavHtml()}</aside>
+      <div class="panel-content" id="supportContent">${supportTabContent()}</div>
     </div>
   </div>`;
 }
-function renderTicketModal(){ return ''; }
-function replyTicket(text){
-  const t = state.tickets.find(x=>x.id===state.activeTicket);
-  if(!t || !text.trim()) return;
-  t.thread.push({from:'me',text,time:'Şimdi'});
-  openTicketModal();
-  setTimeout(()=>{
-    t.thread.push({from:'support',text:t.priority?'Hızlı Destek: Talebiniz öncelikli sıraya alındı, ilgili birimimiz hemen ilgileniyor.':'Talebiniz için teşekkürler, ilgili birimimiz en kısa sürede dönüş yapacaktır.',time:'Şimdi'});
-    openTicketModal();
-  }, t.priority?300:900);
+function supportNavHtml(){
+  const tab = state.supportTab||'faq';
+  const mine = userTickets();
+  const unread = mine.filter(t=>t.unreadForUser).length;
+  const act = k => (tab===k || (k==='tickets' && tab==='detail')) ? 'active' : '';
+  return `
+    <button class="panel-nav-item ${act('faq')}" onclick="setSupportTab('faq')">${ic('help',15)} Sık Sorulan Sorular</button>
+    <button class="panel-nav-item ${act('new')}" onclick="setSupportTab('new')">${ic('ticket',15)} Yeni Destek Talebi</button>
+    <button class="panel-nav-item ${act('tickets')}" onclick="setSupportTab('tickets')">${ic('chat',15)} Taleplerim${mine.length?` <span class="pill ${unread?'pill-danger':'pill-muted'}" style="margin-left:4px;">${unread||mine.length}</span>`:''}</button>`;
 }
+function setSupportTab(tab){
+  if((tab==='new'||tab==='tickets') && !state.loggedIn){ toast('Destek talebi için önce giriş yapmalısın','default'); openAuthModal('login'); return; }
+  state.supportTab = tab;
+  if(tab!=='detail'){ state.activeTicket=null; detachTicketMessages('user'); }
+  renderMainOnly();
+}
+function supportTabContent(){
+  const tab = state.supportTab||'faq';
+  if(tab==='new') return tkNewFormHtml();
+  if(tab==='tickets') return `<div class="panel-content-head"><h2>${ic('chat',16)} Taleplerim <span class="count-tag">${userTickets().length}</span></h2><button class="btn btn-primary btn-sm" onclick="setSupportTab('new')">${ic('ticket',13)} Yeni Talep</button></div><div id="tkListBox">${tkListHtml()}</div>`;
+  if(tab==='detail') return tkDetailHtml();
+  return `
+    <div class="panel-content-head"><h2>${ic('help',16)} Sık Sorulan Sorular</h2></div>
+    ${FAQS.map((f,i)=>`
+      <div class="faq-item" id="faq${i}">
+        <div class="faq-q" onclick="toggleFaq(${i})"><span>${esc(f[0])}</span><span class="faq-chevron">⌄</span></div>
+        <div class="faq-a">${esc(f[1])}</div>
+      </div>`).join('')}
+    <div class="tk-cta">
+      <div><b>Aradığın cevabı bulamadın mı?</b><p>Destek ekibimize yaz, yanıtı bu sayfadan takip et.</p></div>
+      <button class="btn btn-primary" onclick="setSupportTab('new')">${ic('ticket',14)} Destek Talebi Oluştur</button>
+    </div>`;
+}
+function toggleFaq(i){ const el=document.getElementById('faq'+i); if(el) el.classList.toggle('open'); }
+function tkNewFormHtml(){
+  const prio = isPassActive();
+  return `
+    <div class="panel-content-head"><h2>${ic('ticket',16)} Yeni Destek Talebi</h2>${prio?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı Destek aktif</span>`:''}</div>
+    <form onsubmit="event.preventDefault(); submitTicketForm(this);">
+      <div class="field"><label>Konu</label><input name="subject" maxlength="120" placeholder="Örn: Ödemem bakiyeme yansımadı" required></div>
+      <div class="field-row">
+        <div class="field"><label>Kategori</label><select name="category">${TICKET_CATEGORIES.map(c=>`<option>${esc(c)}</option>`).join('')}</select></div>
+        <div class="field"><label>Sipariş / İşlem No (opsiyonel)</label><input name="orderRef" maxlength="60" placeholder="Varsa ekle"></div>
+      </div>
+      <div class="field"><label>Açıklama</label><textarea name="desc" maxlength="3000" placeholder="Ne oldu, ne zaman oldu, ne bekliyordun? Ne kadar ayrıntı verirsen o kadar hızlı çözeriz." required></textarea></div>
+      <button class="btn btn-primary" type="submit">${ic('send',14)} Talebi Gönder</button>
+    </form>`;
+}
+function tkListHtml(){
+  const all = userTickets();
+  const f = state.ticketFilter||'all';
+  const cnt = s => all.filter(t=>t.status===s).length;
+  const chips = [['all','Tümü',all.length],['Açık','Açık',cnt('Açık')],['Yanıtlandı','Yanıtlandı',cnt('Yanıtlandı')],['Çözüldü','Çözüldü',cnt('Çözüldü')]];
+  const list = all.filter(t=>f==='all'||t.status===f);
+  return `
+    <div class="tk-chips">${chips.map(c=>`<button class="tk-chip ${f===c[0]?'active':''}" onclick="state.ticketFilter='${c[0]}';refreshSupportUI()">${c[1]} <span class="n">${c[2]}</span></button>`).join('')}</div>
+    ${list.length ? list.map(t=>`
+      <button class="tk-card ${t.unreadForUser?'unread':''}" onclick="openTicket('${t.id}')">
+        <div class="tk-card-ico">${ic('ticket',20)}</div>
+        <div class="tk-card-body">
+          <div class="tk-card-top"><span class="tk-card-title">${esc(t.subject)}</span>${tkStatusPill(t.status)}</div>
+          <div class="tk-card-prev">${t.lastMessageBy==='admin'?'Destek Ekibi: ':''}${esc(t.lastMessage||'')}</div>
+          <div class="tk-card-meta"><span class="tk-no">${esc(tkNo(t))}</span><span>${esc(t.category)}</span><span>${tkAgo(t.updatedMs)}</span>${t.priority?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı</span>`:''}${t.unreadForUser?'<span class="pill pill-danger">Yeni yanıt</span>':''}</div>
+        </div>
+      </button>`).join('') : `<div class="empty-state" style="padding:40px 16px;"><div class="em-icon">${ic('ticket',30)}</div><b>${all.length?'Bu filtrede talep yok':'Henüz destek talebin yok'}</b><p class="small mt-10">${all.length?'Başka bir filtre seçebilirsin.':'Bir sorun yaşarsan buradan talep açabilirsin.'}</p></div>`}`;
+}
+function tkDetailHeadHtml(t){
+  const m = TICKET_STATUS[t.status]||TICKET_STATUS['Açık'];
+  return `
+    <div class="tk-detail-top">
+      <div style="min-width:0;">
+        <div class="tk-no" style="color:var(--low);font-size:11px;">${esc(tkNo(t))}</div>
+        <h3 class="disp tk-detail-title">${esc(t.subject)}</h3>
+      </div>
+      ${tkStatusPill(t.status)}
+    </div>
+    <div class="tk-detail-meta"><span>${ic('flag',12)} ${esc(t.category)}</span><span>${ic('clock',12)} ${tkFmt(t.createdMs)}</span>${t.orderRef?`<span>${ic('box',12)} ${esc(t.orderRef)}</span>`:''}${t.priority?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı Destek</span>`:''}</div>
+    <div class="tk-note">${esc(m.hint)}${t.status!=='Çözüldü'?` <button class="tk-link" onclick="userCloseTicket('${t.id}')">Sorunum çözüldü</button>`:''}</div>`;
+}
+function tkDetailHtml(){
+  const t = userTickets().find(x=>x.id===state.activeTicket);
+  if(!t) return `<div class="empty-state"><div class="em-icon">${ic('ticket',30)}</div><b>Talep bulunamadı</b><p class="small mt-10"><button class="tk-link" onclick="setSupportTab('tickets')">Taleplerime dön</button></p></div>`;
+  return `
+    <button class="tk-back" onclick="setSupportTab('tickets')">${ic('arrowLeft',14)} Taleplerim</button>
+    <div id="tkHead">${tkDetailHeadHtml(t)}</div>
+    <div class="tk-thread" id="tkThread">${tkThreadHtml(t,'user')}</div>
+    <form class="tk-compose" onsubmit="event.preventDefault(); userReplyTicket(this);">
+      <textarea name="msg" rows="2" maxlength="3000" placeholder="Mesajını yaz… (Enter: gönder, Shift+Enter: yeni satır)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
+      <button class="btn btn-primary" type="submit" aria-label="Gönder">${ic('send',16)}</button>
+    </form>`;
+}
+function refreshSupportUI(scrollBottom){
+  if(state.view!=='support') return;
+  const tab = state.supportTab||'faq';
+  const nav = document.getElementById('supportNav');
+  if(nav) nav.innerHTML = supportNavHtml();
+  if(tab==='tickets'){
+    const b = document.getElementById('tkListBox');
+    if(b) b.innerHTML = tkListHtml(); else renderMainOnly();
+  }else if(tab==='detail'){
+    const t = userTickets().find(x=>x.id===state.activeTicket);
+    const h = document.getElementById('tkHead'), th = document.getElementById('tkThread');
+    if(!t || !h || !th){ renderMainOnly(); return; }
+    h.innerHTML = tkDetailHeadHtml(t);
+    const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 90;
+    th.innerHTML = tkThreadHtml(t,'user');
+    if(atBottom || scrollBottom) th.scrollTop = th.scrollHeight;
+  }
+}
+function openTicketFromLink(id){
+  if(userTickets().some(t=>t.id===id)) openTicket(id);
+  else { state.pendingTicketOpen = id; state.supportTab='tickets'; renderMainOnly(); }
+}
+function openTicket(id){
+  state.activeTicket = id; state.supportTab = 'detail';
+  attachTicketMessages(id,'user');
+  markTicketRead(id,'user');
+  if(state.view!=='support'){ go('support',{}); return; }
+  renderMainOnly();
+  const th = document.getElementById('tkThread'); if(th) th.scrollTop = th.scrollHeight;
+}
+async function submitTicketForm(form){
+  if(form.dataset.busy) return;
+  if(!state.loggedIn){ openAuthModal('login'); return; }
+  const subject = (form.subject.value||'').trim(), desc = (form.desc.value||'').trim();
+  const category = form.category.value, orderRef = (form.orderRef.value||'').trim();
+  if(subject.length<5){ toast('Konu en az 5 karakter olmalı','error'); return; }
+  if(desc.length<20){ toast('Sorununu en az 20 karakterle anlat ki hızlı çözebilelim','error'); return; }
+  if(userTickets().filter(t=>t.status!=='Çözüldü').length>=5){ toast('En fazla 5 açık talebin olabilir. Çözülen talepleri kapatıp tekrar dene.','error'); return; }
+  form.dataset.busy='1';
+  const btn = form.querySelector('button[type=submit]'); if(btn) btn.disabled=true;
+  const priority = isPassActive();
+  const base = {uid:state.uid||'demo-user', userName:state.userName||'Kullanıcı', userEmail:state.userEmail||'', subject:subject, category:category, orderRef:orderRef,
+    description:desc, priority:priority, status:'Açık', lastMessage:desc.slice(0,140), lastMessageBy:'user', unreadForAdmin:true, unreadForUser:false};
+  let id;
+  try{
+    if(FIREBASE_ENABLED && fbDb && state.uid){
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = await fbDb.collection('supportTickets').add(Object.assign({}, base, {createdAt:ts, updatedAt:ts}));
+      id = ref.id;
+      await ref.collection('messages').add({from:'user', senderName:base.userName, text:desc, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    }else{
+      id = 'DST-'+(1000+state.tickets.length+1);
+      const now = Date.now();
+      state.tickets.unshift(Object.assign({id:id, createdMs:now, updatedMs:now, messages:[{from:'user', senderName:base.userName, text:desc, at:now}], legacy:[]}, base));
+    }
+  }catch(err){
+    toast('Talep gönderilemedi: '+authErrorMessage(err),'error');
+    delete form.dataset.busy; if(btn) btn.disabled=false; return;
+  }
+  pushAdminNotification({type:'support', message:subject+' — '+desc.slice(0,140), refId:id});
+  toast(priority?'Hızlı Destek talebin oluşturuldu':'Destek talebin oluşturuldu','success');
+  if(FIREBASE_ENABLED && state.uid){ if(userTickets().some(t=>t.id===id)) openTicket(id); else { state.pendingTicketOpen=id; state.supportTab='tickets'; renderMainOnly(); } }
+  else openTicket(id);
+}
+async function userReplyTicket(form){
+  const text = (form.msg.value||'').trim();
+  if(!text || form.dataset.busy) return;
+  const t = userTickets().find(x=>x.id===state.activeTicket); if(!t) return;
+  form.dataset.busy='1';
+  try{
+    if(FIREBASE_ENABLED && fbDb){
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = fbDb.collection('supportTickets').doc(t.id);
+      await ref.collection('messages').add({from:'user', senderName:state.userName||'Kullanıcı', text:text, createdAt:ts});
+      await ref.update({status:'Açık', lastMessage:text.slice(0,140), lastMessageBy:'user', updatedAt:ts, unreadForAdmin:true});
+    }else{
+      const now = Date.now();
+      t.messages = (t.messages||[]).concat([{from:'user', senderName:state.userName||'Kullanıcı', text:text, at:now}]);
+      Object.assign(t, {status:'Açık', lastMessage:text.slice(0,140), lastMessageBy:'user', updatedMs:now, unreadForAdmin:true});
+    }
+    form.msg.value='';
+    pushAdminNotification({type:'support', message:'Yanıt: '+t.subject+' — '+text.slice(0,120), refId:t.id});
+    if(!FIREBASE_ENABLED){ refreshSupportUI(true); }
+  }catch(err){ toast('Mesaj gönderilemedi: '+authErrorMessage(err),'error'); }
+  delete form.dataset.busy;
+}
+async function userCloseTicket(id){
+  const t = userTickets().find(x=>x.id===id); if(!t) return;
+  if(!confirm('Sorunun çözüldüğünü onaylıyor musun? Talep kapatılır, yeni mesaj yazarsan yeniden açılır.')) return;
+  try{
+    if(FIREBASE_ENABLED && fbDb){
+      await fbDb.collection('supportTickets').doc(id).update({status:'Çözüldü', updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    }else{ t.status='Çözüldü'; t.updatedMs=Date.now(); refreshSupportUI(); }
+    pushAdminNotification({type:'support', message:'Kullanıcı talebi çözüldü olarak kapattı: '+t.subject, refId:id});
+    toast('Talep çözüldü olarak kapatıldı','success');
+  }catch(err){ toast('İşlem yapılamadı: '+authErrorMessage(err),'error'); }
+}
+
+/* ================= ADMİN TARAFI ================= */
+function adminNavHtml(tab){
+  return ADMIN_TABS.map(function(a){
+    const id=a[0], icon=a[1], label=a[2];
+    let badge = 0;
+    if(id==='gelenkutusu') badge = adminInboxUnreadCount();
+    else if(id==='canlidestek') badge = adminSupportUnreadCount();
+    else if(id==='destekler') badge = (state.tickets||[]).filter(t=>t.status==='Açık').length;
+    return `<button class="panel-nav-item ${tab===id?'active':''}" onclick="state.adminTab='${id}';render();">${ic(icon,15)} ${label}${badge?` <span class="pill pill-danger" style="margin-left:4px;">${badge}</span>`:''}</button>`;
+  }).join('');
+}
+function adminFilteredTickets(){
+  const q = (state.adminTicketSearch||'').trim().toLowerCase(), f = state.adminTicketFilter||'all';
+  return (state.tickets||[]).filter(function(t){
+    if(f==='open' && t.status!=='Açık') return false;
+    if(f==='answered' && t.status!=='Yanıtlandı') return false;
+    if(f==='solved' && t.status!=='Çözüldü') return false;
+    if(f==='priority' && !(t.priority && t.status!=='Çözüldü')) return false;
+    if(q && !((t.subject||'')+' '+(t.userName||'')+' '+(t.userEmail||'')+' '+tkNo(t)+' '+(t.category||'')).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort(function(a,b){
+    return ((a.status==='Çözüldü')-(b.status==='Çözüldü')) || ((b.priority?1:0)-(a.priority?1:0)) || (b.updatedMs-a.updatedMs);
+  });
+}
+function adminTicketStatsHtml(){
+  const all = state.tickets||[];
+  const c = s => all.filter(t=>t.status===s).length;
+  const pr = all.filter(t=>t.priority && t.status!=='Çözüldü').length;
+  return `
+    <div class="stat-card"><b class="mono" style="color:var(--warning);">${c('Açık')}</b><span>Yanıt Bekleyen</span></div>
+    <div class="stat-card"><b class="mono" style="color:#7db2ff;">${c('Yanıtlandı')}</b><span>Yanıtlandı</span></div>
+    <div class="stat-card"><b class="mono" style="color:var(--success);">${c('Çözüldü')}</b><span>Çözüldü</span></div>
+    <div class="stat-card"><b class="mono" style="color:var(--orange);">${pr}</b><span>Hızlı Destek (aktif)</span></div>`;
+}
+function adminTicketListHtml(){
+  const list = adminFilteredTickets();
+  const act = state.adminActiveTicket;
+  return list.length ? list.map(t=>`
+    <button class="msgs-row ${act===t.id?'active':''}" onclick="adminOpenTicket('${t.id}')">
+      <div class="msgs-avatar">${esc(initials(t.userName))}</div>
+      <div class="msgs-row-body">
+        <div class="msgs-row-top"><span class="msgs-row-name">${t.priority?ic('bolt',11)+' ':''}${esc(t.subject)}</span><span class="msgs-row-time">${tkAgo(t.updatedMs)}</span></div>
+        <div class="msgs-row-preview"><span>${esc(t.userName||'Kullanıcı')} · ${esc(t.lastMessage||'')}</span>${t.unreadForAdmin?'<span class="msgs-unread-dot"></span>':''}</div>
+        <div style="margin-top:5px;display:flex;gap:6px;align-items:center;">${tkStatusPill(t.status)}<span class="tk-no" style="font-size:10px;color:var(--low);">${esc(tkNo(t))}</span></div>
+      </div>
+    </button>`).join('') : `<div class="empty-state" style="padding:28px 12px;"><div class="em-icon">${ic('ticket',26)}</div><b style="font-size:12.5px;">Talep bulunamadı</b><div class="small text-mid" style="margin-top:4px;">Filtreyi veya aramayı değiştir.</div></div>`;
+}
+function adminTicketHeadHtml(t){
+  return `
+    <button class="msgs-back-btn" onclick="adminBackToTicketList()" aria-label="Taleplere dön">${ic('arrowLeft',18)}</button>
+    <div class="msgs-chat-id" style="flex:1;min-width:0;">
+      <div class="msgs-avatar">${esc(initials(t.userName))}</div>
+      <div style="min-width:0;">
+        <div class="msgs-chat-name">${esc(t.subject)}</div>
+        <div class="msgs-chat-sub">${esc(t.userName||'Kullanıcı')}${t.userEmail?' · '+esc(t.userEmail):''}</div>
+      </div>
+    </div>
+    <div class="tk-adm-actions">
+      ${t.status==='Çözüldü'
+        ? `<button class="btn btn-outline btn-sm" onclick="adminSetTicketStatus('${t.id}','Açık')">${ic('undo',13)} Yeniden Aç</button>`
+        : `<button class="btn btn-primary btn-sm" onclick="adminSetTicketStatus('${t.id}','Çözüldü')">${ic('checkCircle',13)} Çözüldü</button>`}
+    </div>`;
+}
+function adminTicketMetaHtml(t){
+  return `${tkStatusPill(t.status)}<span class="tk-no">${esc(tkNo(t))}</span><span>${ic('flag',11)} ${esc(t.category)}</span><span>${ic('clock',11)} ${tkFmt(t.createdMs)}</span>${t.orderRef?`<span>${ic('box',11)} ${esc(t.orderRef)}</span>`:''}${t.priority?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı Destek</span>`:''}`;
+}
+function adminTicketsContent(){
+  const t = (state.tickets||[]).find(x=>x.id===state.adminActiveTicket);
+  const all = state.tickets||[];
+  const chips = [['all','Tümü',all.length],['open','Yanıt Bekleyen',all.filter(x=>x.status==='Açık').length],['answered','Yanıtlandı',all.filter(x=>x.status==='Yanıtlandı').length],['solved','Çözüldü',all.filter(x=>x.status==='Çözüldü').length],['priority','Hızlı Destek',all.filter(x=>x.priority&&x.status!=='Çözüldü').length]];
+  const f = state.adminTicketFilter||'all';
+  return `
+  <div class="stat-cards" id="adminTicketStats">${adminTicketStatsHtml()}</div>
+  <div class="msgs-shell ${state.adminTicketMobileOpen&&t?'chat-open':''}" id="adminTicketShell" style="margin-top:0;height:640px;max-height:78vh;">
+    <aside class="msgs-list" style="width:100%;">
+      <div class="msgs-list-head"><b>${ic('ticket',14)} Talepler</b><span class="msgs-count" id="adminTicketCount">${adminFilteredTickets().length}</span></div>
+      <div style="padding:10px 12px 0;"><input id="adminTicketSearch" type="search" value="${esc(state.adminTicketSearch||'')}" placeholder="Konu, kullanıcı, e-posta veya talep no ara" oninput="state.adminTicketSearch=this.value;refreshAdminTicketsUI()" style="width:100%;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--hi);font-size:16px;"></div>
+      <div class="tk-chips" id="adminTicketChips" style="padding:10px 12px 8px;margin:0;">${chips.map(c=>`<button class="tk-chip ${f===c[0]?'active':''}" onclick="state.adminTicketFilter='${c[0]}';refreshAdminTicketsUI()">${c[1]} <span class="n">${c[2]}</span></button>`).join('')}</div>
+      <div class="msgs-list-scroll" id="adminTicketList">${adminTicketListHtml()}</div>
+    </aside>
+    <section class="msgs-chat">
+      ${t ? `
+      <div class="msgs-chat-head" id="adminTicketHead">${adminTicketHeadHtml(t)}</div>
+      <div class="tk-adm-meta" id="adminTicketMeta">${adminTicketMetaHtml(t)}</div>
+      <div class="msgs-thread" id="adminTicketThread">${tkThreadHtml(t,'admin')}</div>
+      <div class="tk-quick">${TICKET_QUICK_REPLIES.map((q,i)=>`<button type="button" class="tk-chip" onclick="adminInsertQuickReply(${i})">${esc(q[0])}</button>`).join('')}</div>
+      <form class="tk-compose adm" onsubmit="event.preventDefault(); adminReplyTicket(this);">
+        <textarea id="adminTicketInput" name="msg" rows="2" maxlength="3000" placeholder="Destek Ekibi olarak yanıtla… (Enter: gönder, Shift+Enter: yeni satır)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
+        <button class="btn btn-primary" type="submit" aria-label="Yanıtla">${ic('send',16)}</button>
+      </form>` : `<div class="empty-state" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="em-icon">${ic('ticket',30)}</div><b>Bir talep seç</b><div class="small text-mid" style="margin-top:6px;">Soldan bir talep seçip kullanıcıya yanıt ver.</div></div>`}
+    </section>
+  </div>`;
+}
+function refreshAdminTicketsUI(scrollBottom){
+  if(!(state.view==='admin' && state.adminTab==='destekler')) return;
+  const shell = document.getElementById('adminTicketShell');
+  if(!shell){ renderMainOnly(); return; }
+  const nav = document.getElementById('adminNav'); if(nav) nav.innerHTML = adminNavHtml('destekler');
+  const set = (id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  set('adminTicketStats', adminTicketStatsHtml());
+  set('adminTicketList', adminTicketListHtml());
+  const cnt = document.getElementById('adminTicketCount'); if(cnt) cnt.textContent = adminFilteredTickets().length;
+  const all = state.tickets||[], f = state.adminTicketFilter||'all';
+  const chips = [['all','Tümü',all.length],['open','Yanıt Bekleyen',all.filter(x=>x.status==='Açık').length],['answered','Yanıtlandı',all.filter(x=>x.status==='Yanıtlandı').length],['solved','Çözüldü',all.filter(x=>x.status==='Çözüldü').length],['priority','Hızlı Destek',all.filter(x=>x.priority&&x.status!=='Çözüldü').length]];
+  set('adminTicketChips', chips.map(c=>`<button class="tk-chip ${f===c[0]?'active':''}" onclick="state.adminTicketFilter='${c[0]}';refreshAdminTicketsUI()">${c[1]} <span class="n">${c[2]}</span></button>`).join(''));
+  const t = all.find(x=>x.id===state.adminActiveTicket);
+  if(t && document.getElementById('adminTicketThread')){
+    set('adminTicketHead', adminTicketHeadHtml(t));
+    set('adminTicketMeta', adminTicketMetaHtml(t));
+    const th = document.getElementById('adminTicketThread');
+    const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 90;
+    th.innerHTML = tkThreadHtml(t,'admin');
+    if(atBottom || scrollBottom) th.scrollTop = th.scrollHeight;
+  }
+}
+function adminOpenTicket(id){
+  state.adminActiveTicket = id;
+  state.adminTicketMobileOpen = true;
+  attachTicketMessages(id,'admin');
+  markTicketRead(id,'admin');
+  renderMainOnly();
+  const th = document.getElementById('adminTicketThread'); if(th) th.scrollTop = th.scrollHeight;
+}
+function adminBackToTicketList(){ state.adminTicketMobileOpen=false; renderMainOnly(); }
+function adminInsertQuickReply(i){
+  const el = document.getElementById('adminTicketInput'); if(!el) return;
+  el.value = TICKET_QUICK_REPLIES[i][1]; el.focus();
+}
+async function adminReplyTicket(form){
+  const text = (form.msg.value||'').trim();
+  if(!text || form.dataset.busy) return;
+  const t = (state.tickets||[]).find(x=>x.id===state.adminActiveTicket); if(!t) return;
+  form.dataset.busy='1';
+  const newStatus = t.status==='Çözüldü' ? 'Çözüldü' : 'Yanıtlandı';
+  try{
+    if(FIREBASE_ENABLED && fbDb){
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = fbDb.collection('supportTickets').doc(t.id);
+      await ref.collection('messages').add({from:'admin', senderName:'Destek Ekibi', text:text, createdAt:ts});
+      await ref.update({status:newStatus, lastMessage:text.slice(0,140), lastMessageBy:'admin', updatedAt:ts, unreadForUser:true, unreadForAdmin:false});
+      pushNotification(t.uid, {type:'support_ticket', title:'Destek talebin yanıtlandı', text:tkNo(t)+' · '+(text.length>110?text.slice(0,110)+'…':text), link:{view:'support', params:{ticket:t.id}}});
+    }else{
+      const now = Date.now();
+      t.messages = (t.messages||[]).concat([{from:'admin', senderName:'Destek Ekibi', text:text, at:now}]);
+      Object.assign(t, {status:newStatus, lastMessage:text.slice(0,140), lastMessageBy:'admin', updatedMs:now, unreadForUser:true, unreadForAdmin:false});
+      refreshAdminTicketsUI(true);
+    }
+    form.msg.value='';
+  }catch(err){ console.error(err); toast('Yanıt gönderilemedi: '+authErrorMessage(err),'error'); }
+  delete form.dataset.busy;
+}
+async function adminSetTicketStatus(id, status){
+  const t = (state.tickets||[]).find(x=>x.id===id); if(!t) return;
+  try{
+    if(FIREBASE_ENABLED && fbDb){
+      const upd = {status:status, updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+      if(status==='Çözüldü') upd.unreadForUser = true;
+      await fbDb.collection('supportTickets').doc(id).update(upd);
+      if(status==='Çözüldü') pushNotification(t.uid, {type:'support_ticket', title:'Destek talebin çözüldü', text:tkNo(t)+' · '+t.subject+' çözüldü olarak kapatıldı.', link:{view:'support', params:{ticket:id}}});
+    }else{ t.status=status; t.updatedMs=Date.now(); refreshAdminTicketsUI(); }
+    toast(status==='Çözüldü'?'Talep çözüldü olarak işaretlendi':'Talep yeniden açıldı','success');
+  }catch(err){ toast('Durum güncellenemedi: '+authErrorMessage(err),'error'); }
+}
+function adminResolveTicket(id){ adminSetTicketStatus(id,'Çözüldü'); }
 
 /* ---------------- ADMİN PANELİ ---------------- */
 const ADMIN_TABS = [
@@ -8273,8 +8732,8 @@ function viewAdmin(){
       <span class="admin-live-badge"><span class="dot"></span> Canlı Panel</span>
     </div>
     <div class="panel-layout">
-      <aside class="panel-nav">
-        ${ADMIN_TABS.map(([id,icon,label])=>`<button class="panel-nav-item ${tab===id?'active':''}" onclick="state.adminTab='${id}';render();">${ic(icon,15)} ${label}${id==='gelenkutusu'&&adminInboxUnreadCount()?` <span class="pill pill-danger" style="margin-left:4px;">${adminInboxUnreadCount()}</span>`:''}${id==='canlidestek'&&adminSupportUnreadCount()?` <span class="pill pill-danger" style="margin-left:4px;">${adminSupportUnreadCount()}</span>`:''}</button>`).join('')}
+      <aside class="panel-nav" id="adminNav">
+        ${adminNavHtml(tab)}
       </aside>
       <div class="panel-content">
         <div class="panel-content-head">
@@ -8510,12 +8969,7 @@ function adminTabContent(tab){
     return adminSupportChatContent();
   }
   if(tab==='destekler'){
-    const sorted = state.tickets.slice().sort((a,b)=>(b.priority?1:0)-(a.priority?1:0));
-    return `<div class="data-table-wrap"><table class="data-table">
-      <tr><th>ID</th><th>Konu</th><th>Öncelik</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr>
-      ${sorted.map(t=>`<tr><td class="mono">${t.id}</td><td>${esc(t.subject)}</td><td>${t.priority?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı</span>`:'<span class="small text-mid">Normal</span>'}</td><td>${t.date}</td><td><span class="pill ${t.status==='Açık'?'pill-warning':'pill-success'}">${t.status}</span></td>
-        <td><button class="btn btn-outline btn-sm" onclick="adminResolveTicket('${t.id}')">Çözüldü İşaretle</button></td></tr>`).join('')}
-    </table></div>`;
+    return adminTicketsContent();
   }
   if(tab==='dogrulama'){
     return ADMIN_USERS.filter(u=>!u.verified && u.role==='Satıcı').map(u=>`
@@ -8909,7 +9363,6 @@ async function adminCreateListing(){
   closeModal();
   render();
 }
-function adminResolveTicket(id){ const t=state.tickets.find(x=>x.id===id); if(t) t.status='Çözüldü'; toast('Destek talebi çözüldü olarak işaretlendi','success'); render(); }
 function adminVerifySeller(id){ const u=ADMIN_USERS.find(x=>x.id===id); if(u) u.verified=true; toast('Satıcı doğrulandı ✓','success'); render(); }
 
 /* ---------------- ADMIN: BİLDİRİM & DUYURU YÖNETİMİ ----------------
