@@ -1351,6 +1351,19 @@ html,body{touch-action:pan-x pan-y;}
   .msgs-shell.chat-open .tk-adm-meta{padding-left:15px;}
   .tk-detail-top{flex-direction:column;gap:8px;}
 }
+
+.tk-sys{align-self:center;max-width:90%;text-align:center;font-size:10.5px;font-weight:600;color:var(--mid);background:var(--elevated);border:1px solid var(--border-soft);border-radius:999px;padding:5px 12px;}
+.tk-status-sel{flex-shrink:0;background:var(--elevated);border:1px solid var(--border);color:var(--hi);border-radius:10px;padding:8px 10px;font-size:12.5px;font-weight:700;max-width:140px;}
+.tk-decide{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 14px 0;flex-shrink:0;background:var(--panel-2);border-top:1px solid var(--border-soft);}
+.tk-decide-label{font-size:11px;font-weight:700;color:var(--low);margin-right:2px;}
+.tk-dbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--panel);color:var(--mid);transition:.15s;}
+.tk-dbtn.review:hover,.tk-dbtn.review.on{background:var(--orange-soft);border-color:rgba(255,122,41,.45);color:var(--orange);}
+.tk-dbtn.ok:hover,.tk-dbtn.ok.on{background:rgba(51,214,143,.14);border-color:rgba(51,214,143,.45);color:var(--success);}
+.tk-dbtn.no:hover,.tk-dbtn.no.on{background:rgba(247,107,107,.14);border-color:rgba(247,107,107,.45);color:var(--danger);}
+.tk-dbtn.on{box-shadow:inset 0 0 0 1px currentColor;}
+.tk-compose.adm{flex-wrap:wrap;}
+.tk-statusrow{flex-basis:100%;display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;color:var(--mid);}
+.tk-statusrow select{background:var(--elevated);border:1px solid var(--border);color:var(--hi);border-radius:9px;padding:6px 9px;font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -8211,8 +8224,17 @@ const FAQS = [
 const TICKET_CATEGORIES = ['Ödeme / Bakiye','Sipariş / Teslimat','Hesap Sorunu','Satıcı / İlan','Şikayet','Diğer'];
 const TICKET_STATUS = {
   'Açık':{cls:'pill-warning', hint:'Talebin destek ekibine iletildi, yanıt bekleniyor.'},
+  'İnceleniyor':{cls:'pill-orange', hint:'Talebin destek ekibi tarafından inceleniyor. Gelişme olursa bildirim alacaksın.'},
   'Yanıtlandı':{cls:'pill-blue', hint:'Destek ekibi yanıtladı. İstersen aşağıdan devam edebilirsin.'},
-  'Çözüldü':{cls:'pill-success', hint:'Bu talep çözüldü olarak kapatıldı. Yeni mesaj yazarsan yeniden açılır.'},
+  'Onaylandı':{cls:'pill-success', hint:'Talebin onaylandı. Ayrıntılar için destek ekibinin mesajlarına bak.'},
+  'Reddedildi':{cls:'pill-danger', hint:'Talebin reddedildi. Gerekçe için mesajlara bak; itiraz etmek istersen yanıt yaz, talep yeniden incelenir.'},
+  'Çözüldü':{cls:'pill-muted', hint:'Bu talep çözüldü olarak kapatıldı. Yeni mesaj yazarsan yeniden açılır.'},
+};
+const TICKET_DONE = ['Onaylandı','Reddedildi','Çözüldü'];
+const TICKET_ADMIN_STATUSES = ['Açık','İnceleniyor','Yanıtlandı','Onaylandı','Reddedildi','Çözüldü'];
+const TICKET_NOTIFY = {
+  'Açık':'Talebin yeniden açıldı', 'İnceleniyor':'Talebin inceleniyor', 'Yanıtlandı':'Destek talebin yanıtlandı',
+  'Onaylandı':'Talebin onaylandı', 'Reddedildi':'Talebin reddedildi', 'Çözüldü':'Talebin çözüldü',
 };
 const TICKET_QUICK_REPLIES = [
   ['Talep alındı','Merhaba, talebin bize ulaştı ve inceleniyor. En kısa sürede dönüş yapacağız.'],
@@ -8247,6 +8269,7 @@ function tkThread(t, role){
   return (t.legacy||[]).concat(msgs);
 }
 function tkBubble(m, role){
+  if(m.kind==='status') return `<div class="tk-sys">${esc(m.text)}${m.at?' · '+tkFmt(m.at):''}</div>`;
   const mine = role==='admin' ? m.from==='admin' : m.from==='user';
   const who = m.from==='admin' ? 'Destek Ekibi' : (m.senderName||'Kullanıcı');
   const when = m.at ? tkFmt(m.at) : (m.time||'');
@@ -8284,7 +8307,7 @@ function attachTicketMessages(id, role){
   _tkMsgUnsub[role] = fbDb.collection('supportTickets').doc(id).collection('messages').orderBy('createdAt','asc').onSnapshot(function(snap){
     state[key] = snap.docs.map(function(d){
       const m = d.data()||{};
-      return {id:d.id, from:m.from==='admin'?'admin':'user', senderName:m.senderName||'', text:m.text||'', at:tkMillis(m.createdAt)||Date.now()};
+      return {id:d.id, from:m.from==='admin'?'admin':'user', kind:m.kind||'', senderName:m.senderName||'', text:m.text||'', at:tkMillis(m.createdAt)||Date.now()};
     });
     markTicketRead(id, role);
     if(role==='admin') refreshAdminTicketsUI(true); else refreshSupportUI(true);
@@ -8375,7 +8398,7 @@ function tkListHtml(){
   const all = userTickets();
   const f = state.ticketFilter||'all';
   const cnt = s => all.filter(t=>t.status===s).length;
-  const chips = [['all','Tümü',all.length],['Açık','Açık',cnt('Açık')],['Yanıtlandı','Yanıtlandı',cnt('Yanıtlandı')],['Çözüldü','Çözüldü',cnt('Çözüldü')]];
+  const chips = [['all','Tümü',all.length]].concat(['Açık','İnceleniyor','Yanıtlandı','Onaylandı','Reddedildi','Çözüldü'].map(x=>[x,x,cnt(x)])).filter(c=>c[0]==='all'||c[2]>0||f===c[0]);
   const list = all.filter(t=>f==='all'||t.status===f);
   return `
     <div class="tk-chips">${chips.map(c=>`<button class="tk-chip ${f===c[0]?'active':''}" onclick="state.ticketFilter='${c[0]}';refreshSupportUI()">${c[1]} <span class="n">${c[2]}</span></button>`).join('')}</div>
@@ -8400,7 +8423,7 @@ function tkDetailHeadHtml(t){
       ${tkStatusPill(t.status)}
     </div>
     <div class="tk-detail-meta"><span>${ic('flag',12)} ${esc(t.category)}</span><span>${ic('clock',12)} ${tkFmt(t.createdMs)}</span>${t.orderRef?`<span>${ic('box',12)} ${esc(t.orderRef)}</span>`:''}${t.priority?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı Destek</span>`:''}</div>
-    <div class="tk-note">${esc(m.hint)}${t.status!=='Çözüldü'?` <button class="tk-link" onclick="userCloseTicket('${t.id}')">Sorunum çözüldü</button>`:''}</div>`;
+    <div class="tk-note">${esc(m.hint)}${!tkIsDone(t)?` <button class="tk-link" onclick="userCloseTicket('${t.id}')">Sorunum çözüldü</button>`:''}</div>`;
 }
 function tkDetailHtml(){
   const t = userTickets().find(x=>x.id===state.activeTicket);
@@ -8451,7 +8474,7 @@ async function submitTicketForm(form){
   const category = form.category.value, orderRef = (form.orderRef.value||'').trim();
   if(subject.length<5){ toast('Konu en az 5 karakter olmalı','error'); return; }
   if(desc.length<20){ toast('Sorununu en az 20 karakterle anlat ki hızlı çözebilelim','error'); return; }
-  if(userTickets().filter(t=>t.status!=='Çözüldü').length>=5){ toast('En fazla 5 açık talebin olabilir. Çözülen talepleri kapatıp tekrar dene.','error'); return; }
+  if(userTickets().filter(t=>!tkIsDone(t)).length>=5){ toast('En fazla 5 açık talebin olabilir. Çözülen talepleri kapatıp tekrar dene.','error'); return; }
   form.dataset.busy='1';
   const btn = form.querySelector('button[type=submit]'); if(btn) btn.disabled=true;
   const priority = isPassActive();
@@ -8523,28 +8546,31 @@ function adminNavHtml(tab){
     return `<button class="panel-nav-item ${tab===id?'active':''}" onclick="state.adminTab='${id}';render();">${ic(icon,15)} ${label}${badge?` <span class="pill pill-danger" style="margin-left:4px;">${badge}</span>`:''}</button>`;
   }).join('');
 }
+function tkIsDone(t){ return TICKET_DONE.indexOf(t.status)>=0; }
 function adminFilteredTickets(){
   const q = (state.adminTicketSearch||'').trim().toLowerCase(), f = state.adminTicketFilter||'all';
   return (state.tickets||[]).filter(function(t){
-    if(f==='open' && t.status!=='Açık') return false;
-    if(f==='answered' && t.status!=='Yanıtlandı') return false;
-    if(f==='solved' && t.status!=='Çözüldü') return false;
-    if(f==='priority' && !(t.priority && t.status!=='Çözüldü')) return false;
+    if(f==='priority'){ if(!(t.priority && !tkIsDone(t))) return false; }
+    else if(f!=='all' && t.status!==f) return false;
     if(q && !((t.subject||'')+' '+(t.userName||'')+' '+(t.userEmail||'')+' '+tkNo(t)+' '+(t.category||'')).toLowerCase().includes(q)) return false;
     return true;
   }).sort(function(a,b){
-    return ((a.status==='Çözüldü')-(b.status==='Çözüldü')) || ((b.priority?1:0)-(a.priority?1:0)) || (b.updatedMs-a.updatedMs);
+    return (tkIsDone(a)-tkIsDone(b)) || ((b.priority?1:0)-(a.priority?1:0)) || (b.updatedMs-a.updatedMs);
   });
 }
 function adminTicketStatsHtml(){
   const all = state.tickets||[];
   const c = s => all.filter(t=>t.status===s).length;
-  const pr = all.filter(t=>t.priority && t.status!=='Çözüldü').length;
-  return `
-    <div class="stat-card"><b class="mono" style="color:var(--warning);">${c('Açık')}</b><span>Yanıt Bekleyen</span></div>
-    <div class="stat-card"><b class="mono" style="color:#7db2ff;">${c('Yanıtlandı')}</b><span>Yanıtlandı</span></div>
-    <div class="stat-card"><b class="mono" style="color:var(--success);">${c('Çözüldü')}</b><span>Çözüldü</span></div>
-    <div class="stat-card"><b class="mono" style="color:var(--orange);">${pr}</b><span>Hızlı Destek (aktif)</span></div>`;
+  const pr = all.filter(t=>t.priority && !tkIsDone(t)).length;
+  const card = (n,l,col)=>`<div class="stat-card"><b class="mono" style="color:${col};">${n}</b><span>${l}</span></div>`;
+  return card(c('Açık'),'Yanıt Bekleyen','var(--warning)')+card(c('İnceleniyor'),'İnceleniyor','var(--orange)')+card(c('Onaylandı'),'Onaylandı','var(--success)')+card(c('Reddedildi'),'Reddedildi','var(--danger)')+card(c('Çözüldü'),'Çözüldü','var(--mid)')+card(pr,'Hızlı Destek (aktif)','var(--orange)');
+}
+function adminTicketChipsHtml(){
+  const all = state.tickets||[], f = state.adminTicketFilter||'all';
+  const chips = [['all','Tümü',all.length]]
+    .concat(['Açık','İnceleniyor','Yanıtlandı','Onaylandı','Reddedildi','Çözüldü'].map(s=>[s, s==='Açık'?'Yanıt Bekleyen':s, all.filter(x=>x.status===s).length]))
+    .concat([['priority','Hızlı Destek',all.filter(x=>x.priority && !tkIsDone(x)).length]]);
+  return chips.map(c=>`<button class="tk-chip ${f===c[0]?'active':''}" onclick="state.adminTicketFilter='${c[0]}';refreshAdminTicketsUI()">${c[1]} <span class="n">${c[2]}</span></button>`).join('');
 }
 function adminTicketListHtml(){
   const list = adminFilteredTickets();
@@ -8569,27 +8595,26 @@ function adminTicketHeadHtml(t){
         <div class="msgs-chat-sub">${esc(t.userName||'Kullanıcı')}${t.userEmail?' · '+esc(t.userEmail):''}</div>
       </div>
     </div>
-    <div class="tk-adm-actions">
-      ${t.status==='Çözüldü'
-        ? `<button class="btn btn-outline btn-sm" onclick="adminSetTicketStatus('${t.id}','Açık')">${ic('undo',13)} Yeniden Aç</button>`
-        : `<button class="btn btn-primary btn-sm" onclick="adminSetTicketStatus('${t.id}','Çözüldü')">${ic('checkCircle',13)} Çözüldü</button>`}
-    </div>`;
+    <select class="tk-status-sel" aria-label="Talep durumu" onchange="adminSetTicketStatus('${t.id}',this.value)">
+      ${TICKET_ADMIN_STATUSES.map(s=>`<option value="${s}" ${t.status===s?'selected':''}>${s}</option>`).join('')}
+    </select>`;
 }
 function adminTicketMetaHtml(t){
   return `${tkStatusPill(t.status)}<span class="tk-no">${esc(tkNo(t))}</span><span>${ic('flag',11)} ${esc(t.category)}</span><span>${ic('clock',11)} ${tkFmt(t.createdMs)}</span>${t.orderRef?`<span>${ic('box',11)} ${esc(t.orderRef)}</span>`:''}${t.priority?`<span class="pill pill-featured">${ic('bolt',10)} Hızlı Destek</span>`:''}`;
 }
+function adminTicketDecideHtml(t){
+  const b = (s,cls,icon)=>`<button type="button" class="tk-dbtn ${cls} ${t.status===s?'on':''}" onclick="adminSetTicketStatus('${t.id}','${s}')">${ic(icon,13)} ${s}</button>`;
+  return `<span class="tk-decide-label">Karar</span>${b('İnceleniyor','review','search')}${b('Onaylandı','ok','checkCircle')}${b('Reddedildi','no','close')}`;
+}
 function adminTicketsContent(){
   const t = (state.tickets||[]).find(x=>x.id===state.adminActiveTicket);
-  const all = state.tickets||[];
-  const chips = [['all','Tümü',all.length],['open','Yanıt Bekleyen',all.filter(x=>x.status==='Açık').length],['answered','Yanıtlandı',all.filter(x=>x.status==='Yanıtlandı').length],['solved','Çözüldü',all.filter(x=>x.status==='Çözüldü').length],['priority','Hızlı Destek',all.filter(x=>x.priority&&x.status!=='Çözüldü').length]];
-  const f = state.adminTicketFilter||'all';
   return `
-  <div class="stat-cards" id="adminTicketStats">${adminTicketStatsHtml()}</div>
-  <div class="msgs-shell ${state.adminTicketMobileOpen&&t?'chat-open':''}" id="adminTicketShell" style="margin-top:0;height:640px;max-height:78vh;">
+  <div class="stat-cards" id="adminTicketStats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));">${adminTicketStatsHtml()}</div>
+  <div class="msgs-shell ${state.adminTicketMobileOpen&&t?'chat-open':''}" id="adminTicketShell" style="margin-top:0;height:680px;max-height:80vh;">
     <aside class="msgs-list" style="width:100%;">
       <div class="msgs-list-head"><b>${ic('ticket',14)} Talepler</b><span class="msgs-count" id="adminTicketCount">${adminFilteredTickets().length}</span></div>
       <div style="padding:10px 12px 0;"><input id="adminTicketSearch" type="search" value="${esc(state.adminTicketSearch||'')}" placeholder="Konu, kullanıcı, e-posta veya talep no ara" oninput="state.adminTicketSearch=this.value;refreshAdminTicketsUI()" style="width:100%;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--hi);font-size:16px;"></div>
-      <div class="tk-chips" id="adminTicketChips" style="padding:10px 12px 8px;margin:0;">${chips.map(c=>`<button class="tk-chip ${f===c[0]?'active':''}" onclick="state.adminTicketFilter='${c[0]}';refreshAdminTicketsUI()">${c[1]} <span class="n">${c[2]}</span></button>`).join('')}</div>
+      <div class="tk-chips" id="adminTicketChips" style="padding:10px 12px 8px;margin:0;">${adminTicketChipsHtml()}</div>
       <div class="msgs-list-scroll" id="adminTicketList">${adminTicketListHtml()}</div>
     </aside>
     <section class="msgs-chat">
@@ -8597,11 +8622,19 @@ function adminTicketsContent(){
       <div class="msgs-chat-head" id="adminTicketHead">${adminTicketHeadHtml(t)}</div>
       <div class="tk-adm-meta" id="adminTicketMeta">${adminTicketMetaHtml(t)}</div>
       <div class="msgs-thread" id="adminTicketThread">${tkThreadHtml(t,'admin')}</div>
+      <div class="tk-decide" id="adminTicketDecide">${adminTicketDecideHtml(t)}</div>
       <div class="tk-quick">${TICKET_QUICK_REPLIES.map((q,i)=>`<button type="button" class="tk-chip" onclick="adminInsertQuickReply(${i})">${esc(q[0])}</button>`).join('')}</div>
       <form class="tk-compose adm" onsubmit="event.preventDefault(); adminReplyTicket(this);">
+        <div class="tk-statusrow"><label for="adminTicketReplyStatus">Yanıtla ve durumu</label>
+          <select id="adminTicketReplyStatus" name="status">
+            <option value="auto">Otomatik ayarla</option>
+            <option value="keep">Mevcut durumu koru</option>
+            ${['İnceleniyor','Onaylandı','Reddedildi','Çözüldü'].map(s=>`<option value="${s}">${s} yap</option>`).join('')}
+          </select>
+        </div>
         <textarea id="adminTicketInput" name="msg" rows="2" maxlength="3000" placeholder="Destek Ekibi olarak yanıtla… (Enter: gönder, Shift+Enter: yeni satır)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}"></textarea>
         <button class="btn btn-primary" type="submit" aria-label="Yanıtla">${ic('send',16)}</button>
-      </form>` : `<div class="empty-state" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="em-icon">${ic('ticket',30)}</div><b>Bir talep seç</b><div class="small text-mid" style="margin-top:6px;">Soldan bir talep seçip kullanıcıya yanıt ver.</div></div>`}
+      </form>` : `<div class="empty-state" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="em-icon">${ic('ticket',30)}</div><b>Bir talep seç</b><div class="small text-mid" style="margin-top:6px;">Soldan bir talep seçip onayla, reddet, incelemeye al ya da yanıtla.</div></div>`}
     </section>
   </div>`;
 }
@@ -8613,14 +8646,13 @@ function refreshAdminTicketsUI(scrollBottom){
   const set = (id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
   set('adminTicketStats', adminTicketStatsHtml());
   set('adminTicketList', adminTicketListHtml());
+  set('adminTicketChips', adminTicketChipsHtml());
   const cnt = document.getElementById('adminTicketCount'); if(cnt) cnt.textContent = adminFilteredTickets().length;
-  const all = state.tickets||[], f = state.adminTicketFilter||'all';
-  const chips = [['all','Tümü',all.length],['open','Yanıt Bekleyen',all.filter(x=>x.status==='Açık').length],['answered','Yanıtlandı',all.filter(x=>x.status==='Yanıtlandı').length],['solved','Çözüldü',all.filter(x=>x.status==='Çözüldü').length],['priority','Hızlı Destek',all.filter(x=>x.priority&&x.status!=='Çözüldü').length]];
-  set('adminTicketChips', chips.map(c=>`<button class="tk-chip ${f===c[0]?'active':''}" onclick="state.adminTicketFilter='${c[0]}';refreshAdminTicketsUI()">${c[1]} <span class="n">${c[2]}</span></button>`).join(''));
-  const t = all.find(x=>x.id===state.adminActiveTicket);
+  const t = (state.tickets||[]).find(x=>x.id===state.adminActiveTicket);
   if(t && document.getElementById('adminTicketThread')){
     set('adminTicketHead', adminTicketHeadHtml(t));
     set('adminTicketMeta', adminTicketMetaHtml(t));
+    set('adminTicketDecide', adminTicketDecideHtml(t));
     const th = document.getElementById('adminTicketThread');
     const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 90;
     th.innerHTML = tkThreadHtml(t,'admin');
@@ -8645,35 +8677,51 @@ async function adminReplyTicket(form){
   if(!text || form.dataset.busy) return;
   const t = (state.tickets||[]).find(x=>x.id===state.adminActiveTicket); if(!t) return;
   form.dataset.busy='1';
-  const newStatus = t.status==='Çözüldü' ? 'Çözüldü' : 'Yanıtlandı';
+  const sel = form.status ? form.status.value : 'auto';
+  let newStatus;
+  if(sel==='keep') newStatus = t.status;
+  else if(sel==='auto') newStatus = (tkIsDone(t) || t.status==='İnceleniyor') ? t.status : 'Yanıtlandı';
+  else newStatus = sel;
+  const changed = newStatus!==t.status;
   try{
     if(FIREBASE_ENABLED && fbDb){
       const ts = firebase.firestore.FieldValue.serverTimestamp();
       const ref = fbDb.collection('supportTickets').doc(t.id);
       await ref.collection('messages').add({from:'admin', senderName:'Destek Ekibi', text:text, createdAt:ts});
+      if(changed && newStatus!=='Yanıtlandı'){
+        await ref.collection('messages').add({from:'admin', senderName:'Destek Ekibi', kind:'status', text:'Talep durumu "'+newStatus+'" olarak güncellendi.', createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      }
       await ref.update({status:newStatus, lastMessage:text.slice(0,140), lastMessageBy:'admin', updatedAt:ts, unreadForUser:true, unreadForAdmin:false});
-      pushNotification(t.uid, {type:'support_ticket', title:'Destek talebin yanıtlandı', text:tkNo(t)+' · '+(text.length>110?text.slice(0,110)+'…':text), link:{view:'support', params:{ticket:t.id}}});
+      pushNotification(t.uid, {type:'support_ticket', title:(changed && TICKET_NOTIFY[newStatus]) || 'Destek talebin yanıtlandı', text:tkNo(t)+' · '+(text.length>110?text.slice(0,110)+'…':text), link:{view:'support', params:{ticket:t.id}}});
     }else{
       const now = Date.now();
       t.messages = (t.messages||[]).concat([{from:'admin', senderName:'Destek Ekibi', text:text, at:now}]);
+      if(changed && newStatus!=='Yanıtlandı') t.messages.push({from:'admin', senderName:'Destek Ekibi', kind:'status', text:'Talep durumu "'+newStatus+'" olarak güncellendi.', at:now});
       Object.assign(t, {status:newStatus, lastMessage:text.slice(0,140), lastMessageBy:'admin', updatedMs:now, unreadForUser:true, unreadForAdmin:false});
       refreshAdminTicketsUI(true);
     }
-    form.msg.value='';
+    form.msg.value=''; if(form.status) form.status.value='auto';
   }catch(err){ console.error(err); toast('Yanıt gönderilemedi: '+authErrorMessage(err),'error'); }
   delete form.dataset.busy;
 }
 async function adminSetTicketStatus(id, status){
-  const t = (state.tickets||[]).find(x=>x.id===id); if(!t) return;
+  const t = (state.tickets||[]).find(x=>x.id===id);
+  if(!t || t.status===status){ refreshAdminTicketsUI(); return; }
   try{
     if(FIREBASE_ENABLED && fbDb){
-      const upd = {status:status, updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-      if(status==='Çözüldü') upd.unreadForUser = true;
-      await fbDb.collection('supportTickets').doc(id).update(upd);
-      if(status==='Çözüldü') pushNotification(t.uid, {type:'support_ticket', title:'Destek talebin çözüldü', text:tkNo(t)+' · '+t.subject+' çözüldü olarak kapatıldı.', link:{view:'support', params:{ticket:id}}});
-    }else{ t.status=status; t.updatedMs=Date.now(); refreshAdminTicketsUI(); }
-    toast(status==='Çözüldü'?'Talep çözüldü olarak işaretlendi':'Talep yeniden açıldı','success');
-  }catch(err){ toast('Durum güncellenemedi: '+authErrorMessage(err),'error'); }
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = fbDb.collection('supportTickets').doc(id);
+      await ref.collection('messages').add({from:'admin', senderName:'Destek Ekibi', kind:'status', text:'Talep durumu "'+status+'" olarak güncellendi.', createdAt:ts});
+      await ref.update({status:status, updatedAt:ts, lastMessage:'Durum: '+status, lastMessageBy:'admin', unreadForUser:true, unreadForAdmin:false});
+      pushNotification(t.uid, {type:'support_ticket', title:TICKET_NOTIFY[status]||'Talep durumu güncellendi', text:tkNo(t)+' · '+t.subject, link:{view:'support', params:{ticket:id}}});
+    }else{
+      const now = Date.now();
+      t.messages = (t.messages||[]).concat([{from:'admin', senderName:'Destek Ekibi', kind:'status', text:'Talep durumu "'+status+'" olarak güncellendi.', at:now}]);
+      Object.assign(t, {status:status, updatedMs:now, lastMessage:'Durum: '+status, lastMessageBy:'admin', unreadForUser:true});
+      refreshAdminTicketsUI(true);
+    }
+    toast('Durum "'+status+'" olarak güncellendi','success');
+  }catch(err){ toast('Durum güncellenemedi: '+authErrorMessage(err),'error'); refreshAdminTicketsUI(); }
 }
 function adminResolveTicket(id){ adminSetTicketStatus(id,'Çözüldü'); }
 
